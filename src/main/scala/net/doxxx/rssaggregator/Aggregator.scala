@@ -4,8 +4,10 @@ import akka.actor.{Props, Actor}
 import akka.event.Logging
 import akka.pattern._
 import akka.util.Timeout
-import model.Feed
+import model.{Article, Feed}
 import scala.concurrent.duration._
+import scala.collection.JavaConversions._
+import com.sun.syndication.feed.synd.{SyndContent, SyndEntry}
 
 class Aggregator extends Actor {
   import Aggregator._
@@ -15,6 +17,7 @@ class Aggregator extends Actor {
 
   val feedLoader = context.actorOf(Props[FeedLoader], "feed-loader")
   val feedStorage = context.actorOf(Props[FeedStorage], "feed-storage")
+  val articleStorage = context.actorOf(Props[ArticleStorage], "article-storage")
 
   def receive = {
     case AddFeed(url) => {
@@ -23,14 +26,17 @@ class Aggregator extends Actor {
         case t: Throwable => {
           log.error(t, "Could not load feed {}", url)
         }
-      } map {
+      } onSuccess {
         case FeedLoader.Result(syndFeed) => {
           log.info("Loaded feed {} containing {} articles", syndFeed.getTitle, syndFeed.getEntries.size())
-          FeedStorage.StoreFeed(url, Feed(feedLink = url.toString, link = syndFeed.getLink, title = syndFeed.getTitle,
-            description = Option(syndFeed.getDescription))
-          )
+          feedStorage ! FeedStorage.StoreFeed(url, Feed(feedLink = url.toString, link = syndFeed.getLink,
+            title = syndFeed.getTitle, description = Option(syndFeed.getDescription)))
+          syndFeed.getEntries.map(_.asInstanceOf[SyndEntry]).foreach { e =>
+            val contents = e.getContents.map(_.asInstanceOf[SyndContent].getValue).mkString("\n")
+            articleStorage ! ArticleStorage.StoreArticle(Article(url, e.getUri, e.getLink, e.getTitle, e.getAuthor, contents))
+          }
         }
-      } pipeTo feedStorage
+      }
     }
     case Stop => {
       context.stop(self)
