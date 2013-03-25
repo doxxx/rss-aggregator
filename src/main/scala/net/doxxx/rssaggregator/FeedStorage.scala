@@ -20,12 +20,10 @@ class FeedStorage extends Actor {
     case StoreFeed(url, feed) => {
       log.info("Storing feed {}", feed.title)
       feeds.save(feed.toDBObject)
-      sender ! Result(feed)
     }
   }
 }
 
 object FeedStorage {
   case class StoreFeed(url: String, feed: Feed)
-  case class Result(feed: Feed)
 }
