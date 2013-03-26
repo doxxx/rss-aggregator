@@ -24,6 +24,10 @@ class Aggregator extends Actor {
       log.info("Starting aggregator")
       // TODO: Load list of feeds from db, check for new posts and schedule future checks
     }
+    case GetAllFeeds => {
+      implicit val timeout = Timeout(30.seconds)
+      feedStorage ? FeedStorage.GetAllFeeds pipeTo sender
+    }
     case AddFeed(url) => {
       implicit val timeout = Timeout(30.seconds)
       feedLoader ? FeedLoader.LoadFeed(url) recover {
@@ -50,6 +54,7 @@ class Aggregator extends Actor {
 
 object Aggregator {
   case object Start
+  case object GetAllFeeds
   case class AddFeed(url: String)
   case object Stop
 }
