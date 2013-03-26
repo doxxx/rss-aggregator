@@ -19,17 +19,22 @@ class Aggregator extends Actor {
   val feedStorage = context.actorOf(Props[FeedStorage], "feed-storage")
   val articleStorage = context.actorOf(Props[ArticleStorage], "article-storage")
 
+  implicit val timeout = Timeout(30.seconds)
+
   def receive = {
     case Start => {
-      log.info("Starting aggregator")
-      // TODO: Load list of feeds from db, check for new posts and schedule future checks
+      log.info("Loading known feeds")
+      (feedStorage ? FeedStorage.GetAllFeeds).mapTo[Seq[Feed]].onSuccess {
+        case feeds: Seq[Feed] => feeds.foreach { f =>
+          self ! AddFeed(f.feedLink)
+        }
+      }
+      // TODO: Schedule future checks
     }
     case GetAllFeeds => {
-      implicit val timeout = Timeout(30.seconds)
       feedStorage ? FeedStorage.GetAllFeeds pipeTo sender
     }
     case AddFeed(url) => {
-      implicit val timeout = Timeout(30.seconds)
       feedLoader ? FeedLoader.LoadFeed(url) recover {
         case t: Throwable => {
           log.error(t, "Could not load feed {}", url)
