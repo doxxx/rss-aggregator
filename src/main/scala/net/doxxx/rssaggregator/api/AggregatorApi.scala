@@ -15,8 +15,11 @@ import net.doxxx.rssaggregator.Aggregator
 
 trait AggregatorApi extends HttpService {
   implicit val feedFormat = jsonFormat4(Feed.apply)
+  implicit val articleFormat = jsonFormat6(Article.apply)
 
   val aggregatorRef: ActorRef
+
+  implicit val timeout = Timeout(30.seconds)
 
   val aggregatorApiRoute = {
     get {
@@ -26,10 +29,18 @@ trait AggregatorApi extends HttpService {
         }
       } ~
       path("GetAllFeeds") {
-        implicit val timeout = Timeout(30.seconds)
         respondWithMediaType(`application/json`) {
           complete {
             (aggregatorRef ? Aggregator.GetAllFeeds).mapTo[Seq[Feed]]
+          }
+        }
+      } ~
+      path("GetFeedArticles") {
+        parameter("feedLink") { feedLink: String =>
+          respondWithMediaType(`application/json`) {
+            complete {
+              (aggregatorRef ? Aggregator.GetFeedArticles(feedLink)).mapTo[Seq[Article]]
+            }
           }
         }
       }

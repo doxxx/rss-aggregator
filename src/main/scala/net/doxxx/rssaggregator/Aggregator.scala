@@ -34,6 +34,9 @@ class Aggregator extends Actor {
     case GetAllFeeds => {
       feedStorage ? FeedStorage.GetAllFeeds pipeTo sender
     }
+    case GetFeedArticles(feedLink) => {
+      articleStorage ? ArticleStorage.GetFeedArticles(feedLink) pipeTo sender
+    }
     case AddFeed(url) => {
       feedLoader ? FeedLoader.LoadFeed(url) recover {
         case t: Throwable => {
@@ -60,6 +63,7 @@ class Aggregator extends Actor {
 object Aggregator {
   case object Start
   case object GetAllFeeds
+  case class GetFeedArticles(feedLink: String)
   case class AddFeed(url: String)
   case object Stop
 }
