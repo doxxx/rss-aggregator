@@ -3,15 +3,22 @@ package net.doxxx.rssaggregator
 import akka.actor.{Props, ActorSystem}
 import scala.concurrent.duration._
 import akka.event.Logging
+import spray.can.server.SprayCanHttpServerApp
 
-object Main extends App {
+object Main extends App with SprayCanHttpServerApp {
   import Aggregator._
 
-  implicit val system = ActorSystem("rss-aggregator")
+  implicit override lazy val system = ActorSystem("rss-aggregator")
+
   val log = Logging(system, this.getClass)
 
   val aggregator = system.actorOf(Props[Aggregator], name = "aggregator")
+  aggregator ! Start
 
+  val aggregatorApi = system.actorOf(Props[AggregatorApiActor], "aggregator-api")
+  newHttpServer(aggregatorApi) ! Bind(interface = "localhost", port = 8080)
+
+/*
   aggregator ! AddFeed("http://feeds.arstechnica.com/arstechnica/features")
   aggregator ! AddFeed("http://feeds.arstechnica.com/arstechnica/technology-lab")
   aggregator ! AddFeed("http://feeds.arstechnica.com/arstechnica/gadgets")
@@ -22,8 +29,6 @@ object Main extends App {
   aggregator ! AddFeed("http://feeds.arstechnica.com/arstechnica/gaming")
   aggregator ! AddFeed("http://feeds.arstechnica.com/arstechnica/science")
   aggregator ! AddFeed("http://feeds.arstechnica.com/arstechnica/staff-blogs")
+*/
 
-  // shutdown after 30 seconds, so I don't create a new process every time I test the app
-  Thread.sleep(30.seconds.toMillis)
-  system.shutdown()
 }

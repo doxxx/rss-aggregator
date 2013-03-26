@@ -20,6 +20,10 @@ class Aggregator extends Actor {
   val articleStorage = context.actorOf(Props[ArticleStorage], "article-storage")
 
   def receive = {
+    case Start => {
+      log.info("Starting aggregator")
+      // TODO: Load list of feeds from db, check for new posts and schedule future checks
+    }
     case AddFeed(url) => {
       implicit val timeout = Timeout(30.seconds)
       feedLoader ? FeedLoader.LoadFeed(url) recover {
@@ -45,6 +49,7 @@ class Aggregator extends Actor {
 }
 
 object Aggregator {
+  case object Start
   case class AddFeed(url: String)
   case object Stop
 }
