@@ -44,8 +44,8 @@ package object model {
 
   object Article {
     def fromDBObject(dbo: MongoDBObject): Article = Article(
+      uri = dbo.getAs[String]("_id").get,
       feedLink = dbo.getAs[String]("feedLink").get,
-      uri = dbo.getAs[String]("uri").get,
       link = dbo.getAs[String]("link").get,
       subject = dbo.getAs[String]("subject").get,
       author = dbo.getAs[String]("author").get,
