@@ -1,6 +1,7 @@
 package net.doxxx.rssaggregator
 
 import akka.actor.{Props, ActorSystem}
+import api.AggregatorApiActor
 import scala.concurrent.duration._
 import akka.event.Logging
 import spray.can.server.SprayCanHttpServerApp
@@ -15,7 +16,7 @@ object Main extends App with SprayCanHttpServerApp {
   val aggregator = system.actorOf(Props[Aggregator], name = "aggregator")
   aggregator ! Start
 
-  val aggregatorApi = system.actorOf(Props[AggregatorApiActor], "aggregator-api")
+  val aggregatorApi = system.actorOf(Props(new AggregatorApiActor(aggregator)), "aggregator-api")
   newHttpServer(aggregatorApi) ! Bind(interface = "localhost", port = 8080)
 
 /*
