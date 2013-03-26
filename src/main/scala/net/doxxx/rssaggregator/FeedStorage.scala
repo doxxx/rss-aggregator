@@ -17,6 +17,9 @@ class FeedStorage extends Actor {
   val feeds = db("feeds")
 
   def receive = {
+    case GetAllFeeds => {
+      sender ! feeds.find().map(Feed.fromDBObject(_)).toSeq
+    }
     case StoreFeed(url, feed) => {
       log.info("Storing feed {}", feed.title)
       feeds.save(feed.toDBObject)
@@ -25,5 +28,6 @@ class FeedStorage extends Actor {
 }
 
 object FeedStorage {
+  case object GetAllFeeds
   case class StoreFeed(url: String, feed: Feed)
 }
