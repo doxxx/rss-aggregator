@@ -14,28 +14,29 @@ import net.doxxx.rssaggregator.model._
 import net.doxxx.rssaggregator.Aggregator
 
 trait AggregatorApi extends HttpService {
-  implicit val feedFormat = jsonFormat4(Feed.apply)
-  implicit val articleFormat = jsonFormat6(Article.apply)
-
   val aggregatorRef: ActorRef
 
+  implicit val feedFormat = jsonFormat4(Feed.apply)
+  implicit val articleFormat = jsonFormat6(Article.apply)
   implicit val timeout = Timeout(30.seconds)
+
+  private val basePath = "aggregator/api/0"
 
   val aggregatorApiRoute = {
     get {
-      path("") {
+      path(basePath) {
         respondWithMediaType(`text/html`) {
           complete(index)
         }
       } ~
-      path("GetAllFeeds") {
+      path(basePath / "GetAllFeeds") {
         respondWithMediaType(`application/json`) {
           complete {
             (aggregatorRef ? Aggregator.GetAllFeeds).mapTo[Seq[Feed]]
           }
         }
       } ~
-      path("GetFeedArticles") {
+      path(basePath / "GetFeedArticles") {
         parameter("feedLink") { feedLink: String =>
           respondWithMediaType(`application/json`) {
             complete {
@@ -57,11 +58,4 @@ trait AggregatorApi extends HttpService {
     </body>
   </html>
 
-}
-
-class AggregatorApiActor(val aggregatorRef: ActorRef) extends Actor with AggregatorApi {
-
-  implicit def actorRefFactory = context
-
-  def receive = runRoute(aggregatorApiRoute)
 }
