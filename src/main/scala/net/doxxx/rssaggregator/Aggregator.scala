@@ -26,7 +26,7 @@ class Aggregator extends Actor {
       log.info("Loading known feeds")
       (feedStorage ? FeedStorage.GetAllFeeds).mapTo[Seq[Feed]].onSuccess {
         case feeds: Seq[Feed] => feeds.foreach { f =>
-          self ! AddFeed(f.feedLink)
+          self ! AddFeed(f.link)
         }
       }
       // TODO: Schedule future checks
@@ -42,7 +42,7 @@ class Aggregator extends Actor {
       } onSuccess {
         case FeedLoader.Result(syndFeed) => {
           log.info("Loaded feed {} containing {} articles", syndFeed.getTitle, syndFeed.getEntries.size())
-          feedStorage ! FeedStorage.StoreFeed(url, Feed(feedLink = url.toString, link = syndFeed.getLink,
+          feedStorage ! FeedStorage.StoreFeed(url, Feed(link = url.toString, siteLink = syndFeed.getLink,
             title = syndFeed.getTitle, description = Option(syndFeed.getDescription)))
           syndFeed.getEntries.map(_.asInstanceOf[SyndEntry]).foreach { e =>
             val contents = e.getContents.map(_.asInstanceOf[SyndContent].getValue).mkString("\n")

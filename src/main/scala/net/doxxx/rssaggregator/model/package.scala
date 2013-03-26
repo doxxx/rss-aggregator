@@ -4,16 +4,16 @@ import com.mongodb.casbah.Imports._
 
 package object model {
 
-  case class Feed(feedLink: String, link: String, title: String, description: Option[String] = None) {
+  case class Feed(link: String, siteLink: String, title: String, description: Option[String] = None) {
     def toDBObject = MongoDBObject(
-      "_id" -> feedLink,
-      "link" -> link,
+      "_id" -> link,
+      "siteLink" -> siteLink,
       "title" -> title,
       "description" -> description
     )
     def updateDBObject(dbo: MongoDBObject) {
-      dbo.put("_id", feedLink)
-      dbo.put("link", link)
+      dbo.put("_id", link)
+      dbo.put("siteLink", siteLink)
       dbo.put("title", title)
       dbo.put("description", description)
     }
@@ -21,8 +21,8 @@ package object model {
 
   object Feed {
     def fromDBObject(dbo: MongoDBObject): Feed = Feed(
-      feedLink = dbo.getAs[String]("_id").get,
-      link = dbo.getAs[String]("link").get,
+      link = dbo.getAs[String]("_id").get,
+      siteLink = dbo.getAs[String]("siteLink").get,
       title = dbo.getAs[String]("title").get,
       description = dbo.getAs[String]("description")
     )
