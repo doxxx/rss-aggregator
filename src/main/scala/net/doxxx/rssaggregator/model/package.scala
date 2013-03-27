@@ -1,6 +1,7 @@
 package net.doxxx.rssaggregator
 
 import com.mongodb.casbah.Imports._
+import java.util.Date
 
 package object model {
 
@@ -28,13 +29,16 @@ package object model {
     )
   }
 
-  case class Article(feedLink: String, uri: String, link: String, subject: String, author: String, body: String) {
+  case class Article(feedLink: String, uri: String, link: String, subject: String, author: String, publishedDate: Date,
+                     updatedDate: Date, body: String) {
     def toDBObject = MongoDBObject(
       "_id" -> uri,
       "feedLink" -> feedLink,
       "link" -> link,
       "subject" -> subject,
       "author" -> author,
+      "publishedDate" -> publishedDate,
+      "updatedDate" -> updatedDate,
       "body" -> body
     )
     def updateDBObject(dbo: MongoDBObject) {
@@ -49,6 +53,8 @@ package object model {
       link = dbo.getAs[String]("link").get,
       subject = dbo.getAs[String]("subject").get,
       author = dbo.getAs[String]("author").get,
+      publishedDate = dbo.getAs[Date]("publishedDate").get,
+      updatedDate = dbo.getAs[Date]("publishedDate").get,
       body = dbo.getAs[String]("body").get
     )
   }

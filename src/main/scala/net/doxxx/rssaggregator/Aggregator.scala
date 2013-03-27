@@ -49,7 +49,7 @@ class Aggregator extends Actor {
             title = syndFeed.getTitle, description = Option(syndFeed.getDescription)))
           syndFeed.getEntries.map(_.asInstanceOf[SyndEntry]).foreach { e =>
             val contents = e.getContents.map(_.asInstanceOf[SyndContent].getValue).mkString("\n")
-            articleStorage ! ArticleStorage.StoreArticle(Article(url, e.getUri, e.getLink, e.getTitle, e.getAuthor, contents))
+            articleStorage ! ArticleStorage.StoreArticle(Article(url, e.getUri, e.getLink, e.getTitle, e.getAuthor, e.getPublishedDate, e.getUpdatedDate, contents))
           }
         }
       }

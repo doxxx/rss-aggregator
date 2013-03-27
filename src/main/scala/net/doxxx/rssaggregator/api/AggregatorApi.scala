@@ -12,12 +12,12 @@ import DefaultJsonProtocol._
 import spray.httpx.SprayJsonSupport._
 import net.doxxx.rssaggregator.model._
 import net.doxxx.rssaggregator.Aggregator
+import reflect.ClassTag // hack for bug in akka 2.1 and scala 2.10
 
 trait AggregatorApi extends HttpService {
-  val aggregatorRef: ActorRef
+  import AggregatorJsonProtocol._
 
-  implicit val feedFormat = jsonFormat4(Feed.apply)
-  implicit val articleFormat = jsonFormat6(Article.apply)
+  val aggregatorRef: ActorRef
   implicit val timeout = Timeout(30.seconds)
 
   private val basePath = "aggregator/api/0"

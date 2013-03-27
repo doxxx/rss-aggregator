@@ -2,7 +2,7 @@ name := "rss-aggregator"
 
 version := "1.0-SNAPSHOT"
 
-scalaVersion := "2.10.0"
+scalaVersion := "2.10.1"
 
 resolvers ++= Seq(
     "Sonatype Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/",
