@@ -4,6 +4,8 @@ version := "1.0-SNAPSHOT"
 
 scalaVersion := "2.10.1"
 
+scalacOptions ++= Seq("-feature")
+
 resolvers ++= Seq(
     "Sonatype Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/",
     "spray repo" at "http://repo.spray.io"
