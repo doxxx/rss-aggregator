@@ -17,35 +17,42 @@ import net.doxxx.rssaggregator.Aggregator
 trait GoogleReaderApi extends HttpService {
   val aggregatorRef: ActorRef
 
-  private val readerPath = "reader/api/0"
+  private val apiPath = "reader/api/0"
 
   val googleReaderApiRoute = {
     get {
       path("/accounts/ClientLogin") {
         formFields("accountType", "Email", "Passwd", "service", "source")(login _)
       } ~
-      path(readerPath / "subscription/list") {
+      path(apiPath / "subscription/list") {
         parameter("output")(subscriptionList _)
       } ~
-      path(readerPath / "tag/list") {
-        tagList
+      path(apiPath / "tag/list") {
+        parameter("output")(tagList _)
+      } ~
+      path(apiPath / "unread-count") {
+        parameter("output")(unreadCount _)
+      } ~
+      path(apiPath / "user-info")(userInfo)
+      path("reader/atom/feed" / Rest) { feed: String =>
+        parameter("n".as[Int]?, "xt"?, "c"?) { (n, xt, c) => getFeed(feed, n, xt, c) }
       }
     }
     post {
-      path(readerPath / "subscription/edit") {
+      path(apiPath / "subscription/edit") {
         parameters("ac" ! "subscribe", "s", "a", "t")(addSubscription _) ~
         parameters("ac" ! "unsubscribe", "s")(deleteSubscription _) ~
         parameters("ac" ! "edit", "s", "r"?, "a"?, "t"?)(moveRenameSubscription _)
       } ~
-      path(readerPath / "edit-tag") {
+      path(apiPath / "edit-tag") {
         parameters("ac" ! "edit", "a", "s")(createFolder _) ~
         parameters("ac" ! "edit-tags", "a" ! "user/-/state/com.google/read", "async" ! "true", "i", "s"?)(markPostRead _) ~
         parameters("ac" ! "edit-tags", "r" ! "user/-/state/com.google/read", "async" ! "true", "i", "s"?)(markPostUnread _)
       } ~
-      path(readerPath / "disable-tag") {
+      path(apiPath / "disable-tag") {
         parameters("ac" ! "disable-tags", "s", "t")(deleteFolder _)
       } ~
-      path(readerPath / "mark-all-as-read") {
+      path(apiPath / "mark-all-as-read") {
         parameters("s", "ts".as[Long])(markFeedAsRead _) ~
         parameters("t", "ts".as[Long])(markFolderAsRead _)
       }
@@ -97,7 +104,7 @@ trait GoogleReaderApi extends HttpService {
     complete("TODO")
   }
 
-  def tagList = {
+  def tagList(output: String) = {
     complete("TODO")
   }
 
@@ -114,6 +121,18 @@ trait GoogleReaderApi extends HttpService {
   }
 
   def markPostUnread(entryID: String, feed: Option[String]) = {
+    complete("TODO")
+  }
+
+  def unreadCount(output: String) = {
+    complete("TODO")
+  }
+
+  def getFeed(feed: String, numItems: Option[Int], excludeTags: Option[String], continuation: Option[String]) = {
+    complete("TODO")
+  }
+
+  def userInfo = {
     complete("TODO")
   }
 }
