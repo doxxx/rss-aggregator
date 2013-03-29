@@ -29,19 +29,29 @@ trait AggregatorApi extends HttpService {
           complete(index)
         }
       } ~
-      path(basePath / "GetAllFeeds") {
+      path(basePath / "list-feeds") {
         respondWithMediaType(`application/json`) {
           complete {
             (aggregatorRef ? Aggregator.GetAllFeeds).mapTo[Seq[Feed]]
           }
         }
       } ~
-      path(basePath / "GetFeedArticles") {
+      path(basePath / "list-articles") {
         parameter("feedLink") { feedLink: String =>
           respondWithMediaType(`application/json`) {
             complete {
               (aggregatorRef ? Aggregator.GetFeedArticles(feedLink)).mapTo[Seq[Article]]
             }
+          }
+        }
+      }
+    } ~
+    post {
+      path(basePath / "add-feed") {
+        formField("url") { url: String =>
+          complete {
+            aggregatorRef ! Aggregator.AddFeed(url)
+            ""
           }
         }
       }
@@ -53,7 +63,9 @@ trait AggregatorApi extends HttpService {
       <h1>rss-aggregator</h1>
       <p>Defined methods:</p>
       <ul>
-        <li>GetFeedList</li>
+        <li>GET list-feeds</li>
+        <li>GET list-articles?feedLink=URL</li>
+        <li>POST add-feed; body: url=URL</li>
       </ul>
     </body>
   </html>
