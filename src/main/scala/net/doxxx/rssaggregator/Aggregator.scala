@@ -8,6 +8,7 @@ import model.{Article, Feed}
 import scala.concurrent.duration._
 import scala.collection.JavaConversions._
 import com.sun.syndication.feed.synd.{SyndContent, SyndEntry}
+import util.{Failure, Success}
 
 class Aggregator extends Actor {
   import Aggregator._
@@ -38,12 +39,8 @@ class Aggregator extends Actor {
       articleStorage ? ArticleStorage.GetFeedArticles(feedLink) pipeTo sender
     }
     case AddFeed(url) => {
-      feedLoader ? FeedLoader.LoadFeed(url) recover {
-        case t: Throwable => {
-          log.error(t, "Could not load feed {}", url)
-        }
-      } onSuccess {
-        case FeedLoader.Result(syndFeed) => {
+      (feedLoader ? FeedLoader.LoadFeed(url)).mapTo[FeedLoader.Result] onComplete {
+        case Success(FeedLoader.Result(syndFeed)) => {
           log.info("Loaded feed {} containing {} articles", syndFeed.getTitle, syndFeed.getEntries.size())
           feedStorage ! FeedStorage.StoreFeed(url, Feed(link = url.toString, siteLink = syndFeed.getLink,
             title = syndFeed.getTitle, description = Option(syndFeed.getDescription)))
@@ -51,6 +48,9 @@ class Aggregator extends Actor {
             val contents = e.getContents.map(_.asInstanceOf[SyndContent].getValue).mkString("\n")
             articleStorage ! ArticleStorage.StoreArticle(Article(url, e.getUri, e.getLink, e.getTitle, e.getAuthor, e.getPublishedDate, e.getUpdatedDate, contents))
           }
+        }
+        case Failure(t) => {
+          log.error(t, "Could not load feed {}", url)
         }
       }
     }
