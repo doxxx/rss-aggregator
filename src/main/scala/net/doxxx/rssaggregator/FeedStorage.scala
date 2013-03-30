@@ -21,8 +21,10 @@ class FeedStorage extends Actor {
       sender ! feeds.find().map(Feed.fromDBObject(_)).toSeq
     }
     case StoreFeed(url, feed) => {
-      log.info("Storing feed {}", feed.title)
-      feeds.save(feed.toDBObject)
+      if (feeds.find(MongoDBObject("_id" -> url)).isEmpty) {
+        log.info("Storing feed {}", feed.title)
+        feeds.save(feed.toDBObject)
+      }
     }
   }
 }
