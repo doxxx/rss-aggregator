@@ -25,7 +25,7 @@ class ArticleStorage extends Actor {
       }
     }
     case GetFeedArticles(feedLink) => {
-      sender ! articles.find(MongoDBObject("feedLink" -> feedLink)).map(Article.fromDBObject(_)).toSeq
+      sender ! articles.find(MongoDBObject("feedLink" -> feedLink)).map(Article.fromDBObject(_))
     }
   }
 }
