@@ -5,18 +5,20 @@ import java.util.Date
 
 package object model {
 
-  case class Feed(link: String, siteLink: String, title: String, description: Option[String] = None) {
+  case class Feed(link: String, siteLink: String, title: String, description: Option[String] = None, tags: Set[String] = Set.empty) {
     def toDBObject = MongoDBObject(
       "_id" -> link,
       "siteLink" -> siteLink,
       "title" -> title,
-      "description" -> description
+      "description" -> description,
+      "tags" -> tags
     )
     def updateDBObject(dbo: MongoDBObject) {
       dbo.put("_id", link)
       dbo.put("siteLink", siteLink)
       dbo.put("title", title)
       dbo.put("description", description)
+      dbo.put("tags", dbo.get("tags").toSet ++ tags)
     }
   }
 
@@ -25,7 +27,8 @@ package object model {
       link = dbo.getAs[String]("_id").get,
       siteLink = dbo.getAs[String]("siteLink").get,
       title = dbo.getAs[String]("title").get,
-      description = dbo.getAs[String]("description")
+      description = dbo.getAs[String]("description"),
+      tags = dbo.getAs[Set[String]]("tags").getOrElse(Set.empty)
     )
   }
 

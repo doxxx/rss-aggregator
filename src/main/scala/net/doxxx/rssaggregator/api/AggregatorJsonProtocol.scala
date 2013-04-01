@@ -9,7 +9,7 @@ import java.util.Date
  */
 object AggregatorJsonProtocol extends DefaultJsonProtocol {
 
-  implicit val feedFormat = jsonFormat4(Feed.apply)
+  implicit val feedFormat = jsonFormat5(Feed.apply)
   implicit val articleFormat = jsonFormat8(Article.apply)
   implicit object dateFormat extends RootJsonFormat[Date] {
     def write(obj: Date): JsValue = JsNumber(obj.getTime)
