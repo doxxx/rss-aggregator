@@ -16,7 +16,7 @@ class Aggregator extends Actor {
 
   val log = Logging(context.system, this)
 
-  val feedLoader = context.actorOf(Props[FeedLoader], "feed-loader")
+  val feedFetcher = context.actorOf(Props[FeedFetcher], "feed-fetcher")
   val feedStorage = context.actorOf(Props[FeedStorage], "feed-storage")
   val articleStorage = context.actorOf(Props[ArticleStorage], "article-storage")
 
@@ -38,9 +38,9 @@ class Aggregator extends Actor {
       articleStorage ? ArticleStorage.GetFeedArticles(feedLink) pipeTo sender
     }
     case AddFeed(url) => {
-      (feedLoader ? FeedLoader.LoadFeed(url)).mapTo[FeedLoader.Result] onComplete {
-        case Success(FeedLoader.Result(syndFeed)) => {
-          log.info("Loaded feed {} containing {} articles", syndFeed.getTitle, syndFeed.getEntries.size())
+      (feedFetcher ? FeedFetcher.FetchFeed(url)).mapTo[FeedFetcher.Result] onComplete {
+        case Success(FeedFetcher.Result(syndFeed)) => {
+          log.info("Fetched feed {} containing {} articles", syndFeed.getTitle, syndFeed.getEntries.size())
           // store feed in db
           feedStorage ! FeedStorage.StoreFeed(url, Feed(link = url.toString, siteLink = syndFeed.getLink,
             title = syndFeed.getTitle, description = Option(syndFeed.getDescription)))

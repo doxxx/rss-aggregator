@@ -9,15 +9,15 @@ import java.io.InputStreamReader
 import java.net.URL
 import scala.concurrent._
 
-class FeedLoader extends Actor {
-  import FeedLoader._
+class FeedFetcher extends Actor {
+  import FeedFetcher._
   import context.dispatcher
 
   val log = Logging(context.system, this)
 
   def receive = {
-    case LoadFeed(url) => {
-      log.info("Loading feed {}", url)
+    case FetchFeed(url) => {
+      log.info("Fetching feed {}", url)
       future {
         Result(new SyndFeedInput().build(new InputStreamReader(new URL(url).openStream())))
       } pipeTo sender
@@ -25,7 +25,7 @@ class FeedLoader extends Actor {
   }
 }
 
-object FeedLoader {
-  case class LoadFeed(url: String)
+object FeedFetcher {
+  case class FetchFeed(url: String)
   case class Result(feed: SyndFeed)
 }
