@@ -57,9 +57,6 @@ class Aggregator extends Actor {
       // schedule future check
       context.system.scheduler.scheduleOnce(1.hour, self, AddFeed(url))
     }
-    case Stop => {
-      context.stop(self)
-    }
   }
 }
 
@@ -68,5 +65,4 @@ object Aggregator {
   case object GetAllFeeds
   case class GetFeedArticles(feedLink: String)
   case class AddFeed(url: String)
-  case object Stop
 }
