@@ -30,7 +30,6 @@ class Aggregator extends Actor {
           self ! AddFeed(f.link)
         }
       }
-      // TODO: Schedule future checks
     }
     case GetAllFeeds => {
       feedStorage ? FeedStorage.GetAllFeeds pipeTo sender
@@ -42,8 +41,10 @@ class Aggregator extends Actor {
       (feedLoader ? FeedLoader.LoadFeed(url)).mapTo[FeedLoader.Result] onComplete {
         case Success(FeedLoader.Result(syndFeed)) => {
           log.info("Loaded feed {} containing {} articles", syndFeed.getTitle, syndFeed.getEntries.size())
+          // store feed in db
           feedStorage ! FeedStorage.StoreFeed(url, Feed(link = url.toString, siteLink = syndFeed.getLink,
             title = syndFeed.getTitle, description = Option(syndFeed.getDescription)))
+          // store feed articles in db
           syndFeed.getEntries.map(_.asInstanceOf[SyndEntry]).foreach { e =>
             val contents = e.getContents.map(_.asInstanceOf[SyndContent].getValue).mkString("\n")
             articleStorage ! ArticleStorage.StoreArticle(Article(url, e.getUri, e.getLink, e.getTitle, e.getAuthor, e.getPublishedDate, e.getUpdatedDate, contents))
@@ -53,6 +54,9 @@ class Aggregator extends Actor {
           log.error(t, "Could not load feed {}", url)
         }
       }
+
+      // schedule future check
+      context.system.scheduler.scheduleOnce(1.hour, self, AddFeed(url))
     }
     case Stop => {
       context.stop(self)
