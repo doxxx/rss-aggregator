@@ -28,7 +28,7 @@ package object model {
       siteLink = dbo.getAs[String]("siteLink").get,
       title = dbo.getAs[String]("title").get,
       description = dbo.getAs[String]("description"),
-      tags = dbo.getAs[Set[String]]("tags").getOrElse(Set.empty)
+      tags = dbo.getAs[List[String]]("tags").getOrElse(Nil).toSet
     )
   }
 
