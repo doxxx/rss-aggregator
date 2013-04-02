@@ -2,7 +2,6 @@ package net.doxxx.rssaggregator
 
 import akka.actor.Actor
 import akka.event.Logging
-import com.sun.syndication.feed.synd.SyndFeed
 import com.mongodb.casbah.Imports._
 import model._
 
@@ -20,8 +19,8 @@ class FeedStorage extends Actor {
     case GetAllFeeds => {
       sender ! feeds.find().map(Feed.fromDBObject(_)).toSeq
     }
-    case StoreFeed(url, feed) => {
-      if (feeds.find(MongoDBObject("_id" -> url)).isEmpty) {
+    case StoreFeed(feed) => {
+      if (feeds.find(MongoDBObject("_id" -> feed.link)).isEmpty) {
         log.info("Storing feed {}", feed.title)
         feeds.save(feed.toDBObject)
       }
@@ -31,5 +30,5 @@ class FeedStorage extends Actor {
 
 object FeedStorage {
   case object GetAllFeeds
-  case class StoreFeed(url: String, feed: Feed)
+  case class StoreFeed(feed: Feed)
 }

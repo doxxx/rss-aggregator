@@ -42,7 +42,7 @@ class Aggregator extends Actor {
         case Success(FeedFetcher.Result(syndFeed)) => {
           log.info("Fetched feed {} containing {} articles", syndFeed.getTitle, syndFeed.getEntries.size())
           // store feed in db
-          feedStorage ! FeedStorage.StoreFeed(url, Feed(url.toString, syndFeed.getLink,syndFeed.getTitle, Option(syndFeed.getDescription)))
+          feedStorage ! FeedStorage.StoreFeed(Feed(url, syndFeed.getLink, syndFeed.getTitle, Option(syndFeed.getDescription)))
           // store feed articles in db
           syndFeed.getEntries.map(_.asInstanceOf[SyndEntry]).foreach { e =>
             val contents = e.getContents.map(_.asInstanceOf[SyndContent].getValue).mkString("\n")
