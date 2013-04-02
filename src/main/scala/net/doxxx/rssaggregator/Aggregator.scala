@@ -4,11 +4,11 @@ import akka.actor.{Props, Actor}
 import akka.event.Logging
 import akka.pattern._
 import akka.util.Timeout
-import model.{Article, Feed}
+import model._
 import scala.concurrent.duration._
 import scala.collection.JavaConversions._
 import com.sun.syndication.feed.synd.{SyndContent, SyndEntry}
-import util.{Failure, Success}
+import scala.util.{Failure, Success}
 
 class Aggregator extends Actor {
   import Aggregator._
@@ -19,6 +19,7 @@ class Aggregator extends Actor {
   val feedFetcher = context.actorOf(Props[FeedFetcher], "feed-fetcher")
   val feedStorage = context.actorOf(Props[FeedStorage], "feed-storage")
   val articleStorage = context.actorOf(Props[ArticleStorage], "article-storage")
+  val opmlImporter = context.actorOf(Props[OpmlImporter], "opml-importer")
 
   implicit val timeout = Timeout(30.seconds)
 
@@ -38,6 +39,7 @@ class Aggregator extends Actor {
       articleStorage ? ArticleStorage.GetFeedArticles(feedLink) pipeTo sender
     }
     case AddFeed(url) => {
+      log.info("Fetching feed {}", url)
       (feedFetcher ? FeedFetcher.FetchFeed(url)).mapTo[FeedFetcher.Result] onComplete {
         case Success(FeedFetcher.Result(syndFeed)) => {
           log.info("Fetched feed {} containing {} articles", syndFeed.getTitle, syndFeed.getEntries.size())
@@ -57,6 +59,18 @@ class Aggregator extends Actor {
       // schedule future check
       context.system.scheduler.scheduleOnce(1.hour, self, AddFeed(url))
     }
+    case ImportOpml(opml) => {
+      (opmlImporter ? OpmlImporter.Import(opml)).mapTo[Seq[Feed]] onComplete {
+        case Success(feeds) => {
+          feeds.foreach { feed =>
+            self ! AddFeed(feed.link)
+          }
+        }
+        case Failure(t) => {
+          log.error(t, "Could not import OPML")
+        }
+      }
+    }
   }
 }
 
@@ -65,4 +79,5 @@ object Aggregator {
   case object GetAllFeeds
   case class GetFeedArticles(feedLink: String)
   case class AddFeed(url: String)
+  case class ImportOpml(opml: String)
 }

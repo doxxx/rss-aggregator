@@ -12,7 +12,9 @@ import DefaultJsonProtocol._
 import spray.httpx.SprayJsonSupport._
 import net.doxxx.rssaggregator.model._
 import net.doxxx.rssaggregator.Aggregator
-import reflect.ClassTag // hack for bug in akka 2.1 and scala 2.10
+import reflect.ClassTag
+
+// hack for bug in akka 2.1 and scala 2.10
 
 trait AggregatorApi extends HttpService {
   import AggregatorJsonProtocol._
@@ -51,6 +53,14 @@ trait AggregatorApi extends HttpService {
         formField("url") { url: String =>
           complete {
             aggregatorRef ! Aggregator.AddFeed(url)
+            ""
+          }
+        }
+      } ~
+      path(basePath / "import-opml") {
+        entity(as[String]) { opml: String =>
+          complete {
+            aggregatorRef ! Aggregator.ImportOpml(opml)
             ""
           }
         }
