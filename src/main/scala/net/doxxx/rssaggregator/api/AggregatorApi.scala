@@ -13,12 +13,14 @@ import spray.httpx.SprayJsonSupport._
 import net.doxxx.rssaggregator.model._
 import net.doxxx.rssaggregator.Aggregator
 import reflect.ClassTag
+import akka.event.LoggingAdapter
 
 // hack for bug in akka 2.1 and scala 2.10
 
 trait AggregatorApi extends HttpService {
   import AggregatorJsonProtocol._
 
+  val log: LoggingAdapter
   val aggregatorRef: ActorRef
   implicit val timeout = Timeout(30.seconds)
 
@@ -60,6 +62,7 @@ trait AggregatorApi extends HttpService {
       path(basePath / "import-opml") {
         entity(as[String]) { opml: String =>
           complete {
+            log.info("Importing OPML...")
             aggregatorRef ! Aggregator.ImportOpml(opml)
             ""
           }

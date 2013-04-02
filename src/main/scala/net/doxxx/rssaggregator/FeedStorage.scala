@@ -1,15 +1,13 @@
 package net.doxxx.rssaggregator
 
-import akka.actor.Actor
+import akka.actor.{ActorLogging, Actor}
 import akka.event.Logging
 import com.mongodb.casbah.Imports._
 import model._
 
-class FeedStorage extends Actor {
+class FeedStorage extends Actor with ActorLogging {
   import FeedStorage._
   import context.dispatcher
-
-  val log = Logging(context.system, this)
 
   val mongoClient = MongoClient()
   val db = mongoClient("rss-aggregator")
@@ -21,7 +19,7 @@ class FeedStorage extends Actor {
     }
     case StoreFeed(feed) => {
       if (feeds.find(MongoDBObject("_id" -> feed.link)).isEmpty) {
-        log.info("Storing feed {}", feed.title)
+        log.debug("Storing feed {}", feed.title)
         feeds.save(feed.toDBObject)
       }
     }

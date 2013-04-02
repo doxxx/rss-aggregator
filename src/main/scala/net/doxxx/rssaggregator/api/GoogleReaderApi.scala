@@ -10,11 +10,13 @@ import spray.json._
 import DefaultJsonProtocol._
 import net.doxxx.rssaggregator.model._
 import net.doxxx.rssaggregator.Aggregator
+import akka.event.LoggingAdapter
 
 /**
  * Created 13-03-26 5:36 PM by gordon.
  */
 trait GoogleReaderApi extends HttpService {
+  val log: LoggingAdapter
   val aggregatorRef: ActorRef
 
   private val apiPath = "reader/api/0"

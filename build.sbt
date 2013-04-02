@@ -12,8 +12,9 @@ resolvers ++= Seq(
 )
 
 libraryDependencies ++= Seq(
-    "org.slf4j" % "slf4j-simple" % "1.7.4",
+    "ch.qos.logback" % "logback-classic" % "1.0.10",
     "com.typesafe.akka" %% "akka-actor" % "2.1.2",
+    "com.typesafe.akka" %% "akka-slf4j" % "2.1.2",
     "org.mongodb" %% "casbah" % "2.5.1",
     "rome" % "rome" % "1.0",
     "io.spray" % "spray-can" % "1.1-M7",

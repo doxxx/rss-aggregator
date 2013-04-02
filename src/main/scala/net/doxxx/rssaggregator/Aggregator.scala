@@ -1,6 +1,6 @@
 package net.doxxx.rssaggregator
 
-import akka.actor.{Props, Actor}
+import akka.actor.{ActorLogging, Props, Actor}
 import akka.event.Logging
 import akka.pattern._
 import akka.util.Timeout
@@ -10,11 +10,9 @@ import scala.collection.JavaConversions._
 import com.sun.syndication.feed.synd.{SyndContent, SyndEntry}
 import scala.util.{Failure, Success}
 
-class Aggregator extends Actor {
+class Aggregator extends Actor with ActorLogging {
   import Aggregator._
   import context.dispatcher
-
-  val log = Logging(context.system, this)
 
   val feedFetcher = context.actorOf(Props[FeedFetcher], "feed-fetcher")
   val feedStorage = context.actorOf(Props[FeedStorage], "feed-storage")
@@ -39,10 +37,10 @@ class Aggregator extends Actor {
       articleStorage ? ArticleStorage.GetFeedArticles(feedLink) pipeTo sender
     }
     case AddFeed(url) => {
-      log.info("Fetching feed {}", url)
+      log.debug("Fetching feed {}", url)
       (feedFetcher ? FeedFetcher.FetchFeed(url)).mapTo[FeedFetcher.Result] onComplete {
         case Success(FeedFetcher.Result(syndFeed)) => {
-          log.info("Fetched feed {} containing {} articles", syndFeed.getTitle, syndFeed.getEntries.size())
+          log.debug("Fetched feed {} containing {} articles", syndFeed.getTitle, syndFeed.getEntries.size())
           // store feed in db
           feedStorage ! FeedStorage.StoreFeed(Feed(url, syndFeed.getLink, syndFeed.getTitle, Option(syndFeed.getDescription)))
           // store feed articles in db
