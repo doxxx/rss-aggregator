@@ -26,17 +26,17 @@ class Aggregator extends Actor with ActorLogging {
   def receive = {
     case Start => {
       log.info("Loading known feeds")
-      (feedStorage ? FeedStorage.GetAllFeeds).mapTo[Seq[Feed]].onSuccess {
+      getAllFeeds.onSuccess {
         case feeds: Seq[Feed] => feeds.foreach { f =>
           self ! AddFeed(f.link)
         }
       }
     }
     case GetAllFeeds => {
-      feedStorage ? FeedStorage.GetAllFeeds pipeTo sender
+      getAllFeeds pipeTo sender
     }
     case GetFeedArticles(feedLink) => {
-      articleStorage ? ArticleStorage.GetFeedArticles(feedLink) pipeTo sender
+      getFeedArticles(feedLink) pipeTo sender
     }
     case AddFeed(url) => {
       log.debug("Fetching feed {}", url)
@@ -56,7 +56,7 @@ class Aggregator extends Actor with ActorLogging {
       context.system.scheduler.scheduleOnce(1.hour, self, AddFeed(url))
     }
     case ImportOpml(opml) => {
-      (opmlImporter ? OpmlImporter.Import(opml)).mapTo[Seq[Feed]].onComplete {
+      importOpml(opml).onComplete {
         case Success(feeds) => {
           feeds.foreach { feed =>
             self ! AddFeed(feed.link)
@@ -69,15 +69,28 @@ class Aggregator extends Actor with ActorLogging {
     }
   }
 
-  def fetchFeed(url: String): Future[SyndFeed] = future {
+
+  private def importOpml(opml: String): Future[Seq[Feed]] = {
+    (opmlImporter ? OpmlImporter.Import(opml)).mapTo[Seq[Feed]]
+  }
+
+  private def getFeedArticles(feedLink: String): Future[Seq[Article]] = {
+    (articleStorage ? ArticleStorage.GetFeedArticles(feedLink)).mapTo[Seq[Article]]
+  }
+
+  private def getAllFeeds: Future[Seq[Feed]] = {
+    (feedStorage ? FeedStorage.GetAllFeeds).mapTo[Seq[Feed]]
+  }
+
+  private def fetchFeed(url: String): Future[SyndFeed] = future {
     new SyndFeedInput().build(new InputStreamReader(new URL(url).openStream()))
   }
 
-  def storeFeed(url: String, syndFeed: SyndFeed) {
+  private def storeFeed(url: String, syndFeed: SyndFeed) {
     feedStorage ! FeedStorage.StoreFeed(Feed(url, syndFeed.getLink, syndFeed.getTitle, Option(syndFeed.getDescription)))
   }
 
-  def storeArticles(url: String, syndFeed: SyndFeed) {
+  private def storeArticles(url: String, syndFeed: SyndFeed) {
     syndFeed.getEntries.map(_.asInstanceOf[SyndEntry]).foreach { e =>
       val contents = e.getContents.map(_.asInstanceOf[SyndContent].getValue).mkString("\n")
       articleStorage ! ArticleStorage.StoreArticle(Article(url, e.getUri, e.getLink, e.getTitle, e.getAuthor, e.getPublishedDate, e.getUpdatedDate, contents))
