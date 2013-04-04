@@ -14,6 +14,7 @@ import net.doxxx.rssaggregator.model._
 import net.doxxx.rssaggregator.Aggregator
 import reflect.ClassTag
 import akka.event.LoggingAdapter
+import util.{Failure, Success, Try}
 
 // hack for bug in akka 2.1 and scala 2.10
 
@@ -53,9 +54,14 @@ trait AggregatorApi extends HttpService {
     post {
       path(basePath / "add-feed") {
         formField("url") { url: String =>
-          complete {
-            aggregatorRef ! Aggregator.AddFeed(url)
-            ""
+          respondWithMediaType(`application/json`) {
+            complete {
+              (aggregatorRef ? Aggregator.AddFeed(url)).mapTo[String].map {
+                title => Map("success" -> title)
+              }.recover {
+                case t => Map("error" -> t.toString)
+              }
+            }
           }
         }
       } ~

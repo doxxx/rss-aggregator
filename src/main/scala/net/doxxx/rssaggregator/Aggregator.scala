@@ -11,7 +11,7 @@ import scala.util.{Failure, Success}
 import scala.concurrent._
 import com.sun.syndication.io.SyndFeedInput
 import java.io.InputStreamReader
-import java.net.URL
+import java.net.{SocketTimeoutException, UnknownHostException, URL}
 
 class Aggregator extends Actor with ActorLogging {
   import Aggregator._
@@ -41,19 +41,21 @@ class Aggregator extends Actor with ActorLogging {
     case AddFeed(url) => {
       log.debug("Fetching feed {}", url)
 
-      fetchFeed(url).onComplete {
+      fetchFeed(url).andThen {
         case Success(syndFeed) => {
           log.debug("Fetched feed {} containing {} articles", syndFeed.getTitle, syndFeed.getEntries.size())
+          // store feed and articles in db
           storeFeed(url, syndFeed)
           storeArticles(url, syndFeed)
+          // schedule future check
+          context.system.scheduler.scheduleOnce(1.hour, self, AddFeed(url))
         }
         case Failure(t) => {
           log.error(t, "Could not load feed {}", url)
         }
-      }
-
-      // schedule future check
-      context.system.scheduler.scheduleOnce(1.hour, self, AddFeed(url))
+      }.map { syndFeed =>
+        syndFeed.getTitle
+      }.pipeTo(sender)
     }
     case ImportOpml(opml) => {
       importOpml(opml).onComplete {
@@ -83,7 +85,10 @@ class Aggregator extends Actor with ActorLogging {
   }
 
   private def fetchFeed(url: String): Future[SyndFeed] = future {
-    new SyndFeedInput().build(new InputStreamReader(new URL(url).openStream()))
+    val c = new URL(url).openConnection()
+    c.setConnectTimeout(20000)
+    new SyndFeedInput().build(new InputStreamReader(c.getInputStream))
+//    throw new SocketTimeoutException()
   }
 
   private def storeFeed(url: String, syndFeed: SyndFeed) {
