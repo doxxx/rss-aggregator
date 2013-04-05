@@ -25,7 +25,7 @@ class Aggregator extends Actor with ActorLogging {
     case Start => {
       log.info("Loading known feeds")
       Feed.findAll.foreach { f =>
-        self ! AddFeed(f.link)
+        checkForUpdates(f)
       }
     }
     case GetAllFeeds => {
@@ -43,8 +43,6 @@ class Aggregator extends Actor with ActorLogging {
           // store feed and articles in db
           storeFeed(url, syndFeed)
           storeArticles(url, syndFeed)
-          // schedule future check
-          context.system.scheduler.scheduleOnce(1.hour, self, AddFeed(url))
         }
         case Failure(t) => {
           log.error(t, "Could not load feed {}", url)
@@ -73,6 +71,16 @@ class Aggregator extends Actor with ActorLogging {
           }
         }
       }
+    }
+  }
+
+  private def checkForUpdates(feed: Feed) {
+    fetchFeed(feed.link).onComplete {
+      case Success(sf) => {
+        storeFeed(feed.link, sf)
+        storeArticles(feed.link, sf)
+      }
+      case Failure(t) => log.error("Could not check feed for updates: {}", feed.link)
     }
   }
 
