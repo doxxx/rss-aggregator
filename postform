@@ -1,0 +1,2 @@
+#!/bin/sh
+curl -F $2 http://localhost:8080/aggregator/api/0/$1
