@@ -96,18 +96,18 @@ class Aggregator extends Actor with ActorLogging {
     }
   }
 
-  private def storeArticles(url: String, syndFeed: SyndFeed) {
+  private def storeArticles(feedLink: String, syndFeed: SyndFeed) {
     syndFeed.getEntries.map(_.asInstanceOf[SyndEntry]).foreach { e =>
       val contents = e.getContents.map(_.asInstanceOf[SyndContent].getValue).mkString("\n")
-      val uri = e.getUri
-      Article.findByUri(uri) match {
+      val id = Article.makeId(feedLink, e.getLink, e.getUri, e.getPublishedDate)
+      Article.findById(id) match {
         case Some(article) => {
           // TODO: Check if it's updated?
-          log.debug("Skipping already stored article {}", uri)
+          log.debug("Skipping already stored article {}", id)
         }
         case None => {
-          val article = Article(url, uri, e.getLink, e.getTitle, e.getAuthor, e.getPublishedDate, e.getUpdatedDate, contents)
-          log.debug("Storing article {}", article.uri)
+          val article = Article(id, feedLink, e.getLink, e.getTitle, e.getAuthor, e.getPublishedDate, e.getUpdatedDate, contents)
+          log.debug("Storing article {}", article.id)
           Article.save(article)
         }
       }

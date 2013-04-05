@@ -49,10 +49,10 @@ package object model {
     }
   }
 
-  case class Article(feedLink: String, uri: String, link: String, subject: String, author: String, publishedDate: Date,
+  case class Article(id: String, feedLink: String, link: String, subject: String, author: String, publishedDate: Date,
                      updatedDate: Date, body: String) {
     def toDBObject = MongoDBObject(
-      "_id" -> uri,
+      "_id" -> id,
       "feedLink" -> feedLink,
       "link" -> link,
       "subject" -> subject,
@@ -67,8 +67,12 @@ package object model {
   }
 
   object Article {
+    def makeId(feedLink: String, link: String, uri: String, publishedDate: Date): String = {
+      Seq(feedLink, link, uri, publishedDate.getTime.toString).mkString("|")
+    }
+
     def fromDBObject(dbo: MongoDBObject): Article = Article(
-      uri = dbo.getAs[String]("_id").get,
+      id = dbo.getAs[String]("_id").get,
       feedLink = dbo.getAs[String]("feedLink").get,
       link = dbo.getAs[String]("link").get,
       subject = dbo.getAs[String]("subject").get,
@@ -86,8 +90,8 @@ package object model {
       articlesColl.find(MongoDBObject("feedLink" -> feedLink)).map(fromDBObject(_)).toSeq
     }
 
-    def findByUri(uri: String): Option[Article] = {
-      articlesColl.findOneByID(uri).map(fromDBObject(_))
+    def findById(id: String): Option[Article] = {
+      articlesColl.findOneByID(id).map(fromDBObject(_))
     }
 
     def save(article: Article) {
