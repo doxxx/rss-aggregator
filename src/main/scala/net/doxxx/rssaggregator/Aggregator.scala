@@ -56,7 +56,22 @@ class Aggregator extends Actor with ActorLogging {
     case ImportOpml(opml) => {
       val feeds = importOpml(opml)
       feeds.foreach { f =>
-        self ! AddFeed(f.link)
+        log.debug("Fetching feed {}", f.link)
+        fetchFeed(f.link).onComplete {
+          case Success(sf) => {
+            if (Feed.findByFeedLink(f.link).isEmpty) {
+              log.debug("Saving new feed: {}", f.link)
+              Feed.save(f)
+              storeArticles(f.link, sf)
+            }
+            else {
+              log.debug("Skipping known feed: {}", f.link)
+            }
+          }
+          case Failure(t) => {
+            log.error(t, "Could not import feed {}", f.link)
+          }
+        }
       }
     }
   }
@@ -85,7 +100,6 @@ class Aggregator extends Actor with ActorLogging {
     syndFeed.getEntries.map(_.asInstanceOf[SyndEntry]).foreach { e =>
       val contents = e.getContents.map(_.asInstanceOf[SyndContent].getValue).mkString("\n")
       val uri = e.getUri
-      log.debug("Checking if article already stored: {}", uri)
       Article.findByUri(uri) match {
         case Some(article) => {
           // TODO: Check if it's updated?
