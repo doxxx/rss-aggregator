@@ -99,7 +99,7 @@ class Aggregator extends Actor with ActorLogging {
   private def storeArticles(feedLink: String, syndFeed: SyndFeed) {
     syndFeed.getEntries.map(_.asInstanceOf[SyndEntry]).foreach { e =>
       val contents = e.getContents.map(_.asInstanceOf[SyndContent].getValue).mkString("\n")
-      val id = Article.makeId(feedLink, e.getLink, e.getUri, e.getPublishedDate)
+      val id = Article.makeId(feedLink, e)
       Article.findById(id) match {
         case Some(article) => {
           // TODO: Check if it's updated?

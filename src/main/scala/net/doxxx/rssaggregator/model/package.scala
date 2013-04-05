@@ -2,6 +2,7 @@ package net.doxxx.rssaggregator
 
 import com.mongodb.casbah.Imports._
 import java.util.Date
+import com.sun.syndication.feed.synd._
 
 package object model {
 
@@ -67,8 +68,10 @@ package object model {
   }
 
   object Article {
-    def makeId(feedLink: String, link: String, uri: String, publishedDate: Date): String = {
-      Seq(feedLink, link, uri, publishedDate.getTime.toString).mkString("|")
+    def makeId(feedLink: String, entry: SyndEntry): String = {
+      // both published and updated date could be null, use former over latter
+      val date = Option(entry.getPublishedDate).orElse(Option(entry.getUpdatedDate)).map(_.getTime.toString).getOrElse("")
+      Seq(feedLink, entry.getLink, entry.getUri, date).mkString("|")
     }
 
     def fromDBObject(dbo: MongoDBObject): Article = Article(
