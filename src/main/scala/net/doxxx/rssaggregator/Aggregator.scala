@@ -1,42 +1,38 @@
 package net.doxxx.rssaggregator
 
-import akka.actor.{ActorLogging, Props, Actor}
+import akka.actor.{ActorLogging, Actor}
 import akka.pattern._
 import akka.util.Timeout
 import model._
 import scala.concurrent.duration._
 import scala.collection.JavaConversions._
 import com.sun.syndication.feed.synd._
-import scala.util.{Failure, Success}
 import scala.concurrent._
 import com.sun.syndication.io.SyndFeedInput
-import java.io.InputStreamReader
-import java.net.{SocketTimeoutException, UnknownHostException, URL}
+import java.io.{StringReader, InputStreamReader}
+import java.net.URL
+import scala.util.Failure
+import scala.util.Success
+import scala.xml.XML
 
 class Aggregator extends Actor with ActorLogging {
   import Aggregator._
   import context.dispatcher
-
-  val feedStorage = context.actorOf(Props[FeedStorage], "feed-storage")
-  val articleStorage = context.actorOf(Props[ArticleStorage], "article-storage")
-  val opmlImporter = context.actorOf(Props[OpmlImporter], "opml-importer")
 
   implicit val timeout = Timeout(30.seconds)
 
   def receive = {
     case Start => {
       log.info("Loading known feeds")
-      getAllFeeds.onSuccess {
-        case feeds: Seq[Feed] => feeds.foreach { f =>
-          self ! AddFeed(f.link)
-        }
+      Feed.findAll.foreach { f =>
+        self ! AddFeed(f.link)
       }
     }
     case GetAllFeeds => {
-      getAllFeeds pipeTo sender
+      sender ! Feed.findAll
     }
     case GetFeedArticles(feedLink) => {
-      getFeedArticles(feedLink) pipeTo sender
+      sender ! Article.findByFeedLink(feedLink)
     }
     case AddFeed(url) => {
       log.debug("Fetching feed {}", url)
@@ -58,47 +54,59 @@ class Aggregator extends Actor with ActorLogging {
       }.pipeTo(sender)
     }
     case ImportOpml(opml) => {
-      importOpml(opml).onComplete {
-        case Success(feeds) => {
-          feeds.foreach { feed =>
-            self ! AddFeed(feed.link)
-          }
-        }
-        case Failure(t) => {
-          log.error(t, "Could not import OPML")
-        }
+      val feeds = importOpml(opml)
+      feeds.foreach { f =>
+        self ! AddFeed(f.link)
       }
     }
-  }
-
-
-  private def importOpml(opml: String): Future[Seq[Feed]] = {
-    (opmlImporter ? OpmlImporter.Import(opml)).mapTo[Seq[Feed]]
-  }
-
-  private def getFeedArticles(feedLink: String): Future[Seq[Article]] = {
-    (articleStorage ? ArticleStorage.GetFeedArticles(feedLink)).mapTo[Seq[Article]]
-  }
-
-  private def getAllFeeds: Future[Seq[Feed]] = {
-    (feedStorage ? FeedStorage.GetAllFeeds).mapTo[Seq[Feed]]
   }
 
   private def fetchFeed(url: String): Future[SyndFeed] = future {
     val c = new URL(url).openConnection()
     c.setConnectTimeout(20000)
     new SyndFeedInput().build(new InputStreamReader(c.getInputStream))
-//    throw new SocketTimeoutException()
   }
 
   private def storeFeed(url: String, syndFeed: SyndFeed) {
-    feedStorage ! FeedStorage.StoreFeed(Feed(url, syndFeed.getLink, syndFeed.getTitle, Option(syndFeed.getDescription)))
+    Feed.findByFeedLink(url) match {
+      case Some(feed) => // TODO: Check if it's updated?
+      case None => {
+        val feed = Feed(url, syndFeed.getLink, syndFeed.getTitle, Option(syndFeed.getDescription))
+        log.debug("Storing feed {}", feed.title)
+        Feed.save(feed)
+      }
+      case _ => log.debug("Skipping already stored feed {}", url)
+    }
   }
 
   private def storeArticles(url: String, syndFeed: SyndFeed) {
     syndFeed.getEntries.map(_.asInstanceOf[SyndEntry]).foreach { e =>
       val contents = e.getContents.map(_.asInstanceOf[SyndContent].getValue).mkString("\n")
-      articleStorage ! ArticleStorage.StoreArticle(Article(url, e.getUri, e.getLink, e.getTitle, e.getAuthor, e.getPublishedDate, e.getUpdatedDate, contents))
+      val uri = e.getUri
+      log.debug("Checking if article already stored: {}", uri)
+      Article.findByUri(uri) match {
+        case Some(article) => // TODO: Check if it's updated?
+        case None => {
+          val article = Article(url, uri, e.getLink, e.getTitle, e.getAuthor, e.getPublishedDate, e.getUpdatedDate, contents)
+          log.debug("Storing article {}", article.uri)
+          Article.save(article)
+        }
+      }
+    }
+  }
+
+  private def importOpml(opml: String): Seq[Feed] = {
+    val root = XML.load(new StringReader(opml))
+    val folders = root \ "body" \ "outline"
+    folders.flatMap { elem =>
+      val folderName = (elem \ "@title").text
+      val feeds = elem \ "outline"
+      feeds map { elem =>
+        val feedLink = (elem \ "@xmlUrl").text
+        val siteLink = (elem \ "@htmlUrl").text
+        val title = (elem \ "@title").text
+        Feed(feedLink, siteLink, title, None, Set(folderName))
+      }
     }
   }
 }

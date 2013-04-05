@@ -5,6 +5,11 @@ import java.util.Date
 
 package object model {
 
+  private val mongoClient = MongoClient()
+  private val db = mongoClient("rss-aggregator")
+  private val feedsColl = db("feeds")
+  private val articlesColl = db("articles")
+
   case class Feed(link: String, siteLink: String, title: String, description: Option[String] = None, tags: Set[String] = Set.empty) {
     def toDBObject = MongoDBObject(
       "_id" -> link,
@@ -30,6 +35,18 @@ package object model {
       description = dbo.getAs[String]("description"),
       tags = dbo.getAs[List[String]]("tags").getOrElse(Nil).toSet
     )
+
+    def findAll: Seq[Feed] = {
+      feedsColl.find().map(fromDBObject(_)).toSeq
+    }
+
+    def findByFeedLink(feedLink: String): Option[Feed] = {
+      feedsColl.findOneByID(feedLink).map(dbo => fromDBObject(dbo))
+    }
+
+    def save(feed: Feed) {
+      feedsColl.save(feed.toDBObject)
+    }
   }
 
   case class Article(feedLink: String, uri: String, link: String, subject: String, author: String, publishedDate: Date,
@@ -60,6 +77,22 @@ package object model {
       updatedDate = dbo.getAs[Date]("publishedDate").get,
       body = dbo.getAs[String]("body").get
     )
+
+    def findAll: Seq[Article] = {
+      articlesColl.find().map(fromDBObject(_)).toSeq
+    }
+
+    def findByFeedLink(feedLink: String): Seq[Article] = {
+      articlesColl.find(MongoDBObject("feedLink" -> feedLink)).map(fromDBObject(_)).toSeq
+    }
+
+    def findByUri(uri: String): Option[Article] = {
+      articlesColl.findOneByID(uri).map(fromDBObject(_))
+    }
+
+    def save(article: Article) {
+      articlesColl.save(article.toDBObject)
+    }
   }
 
 }
