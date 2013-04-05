@@ -69,13 +69,15 @@ class Aggregator extends Actor with ActorLogging {
 
   private def storeFeed(url: String, syndFeed: SyndFeed) {
     Feed.findByFeedLink(url) match {
-      case Some(feed) => // TODO: Check if it's updated?
+      case Some(feed) => {
+        // TODO: Check if it's updated?
+        log.debug("Skipping already stored feed {}", url)
+      }
       case None => {
         val feed = Feed(url, syndFeed.getLink, syndFeed.getTitle, Option(syndFeed.getDescription))
-        log.debug("Storing feed {}", feed.title)
+        log.debug("Storing feed {}", feed.link)
         Feed.save(feed)
       }
-      case _ => log.debug("Skipping already stored feed {}", url)
     }
   }
 
@@ -85,7 +87,10 @@ class Aggregator extends Actor with ActorLogging {
       val uri = e.getUri
       log.debug("Checking if article already stored: {}", uri)
       Article.findByUri(uri) match {
-        case Some(article) => // TODO: Check if it's updated?
+        case Some(article) => {
+          // TODO: Check if it's updated?
+          log.debug("Skipping already stored article {}", uri)
+        }
         case None => {
           val article = Article(url, uri, e.getLink, e.getTitle, e.getAuthor, e.getPublishedDate, e.getUpdatedDate, contents)
           log.debug("Storing article {}", article.uri)
