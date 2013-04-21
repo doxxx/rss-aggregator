@@ -1,8 +1,11 @@
 package net.doxxx.rssaggregator
 
-import akka.actor.{ActorLogging, Actor}
+import akka.actor.{ActorRef, Props, ActorLogging, Actor}
 import akka.pattern._
 import akka.util.Timeout
+import spray.client.HttpConduit
+import spray.http._
+import spray.io._
 import model._
 import scala.concurrent.duration._
 import scala.collection.JavaConversions._
@@ -14,10 +17,15 @@ import java.net.URL
 import scala.util.Failure
 import scala.util.Success
 import scala.xml.XML
+import spray.can.client.HttpClient
+import spray.caching.{Cache, LruCache}
 
 class Aggregator extends Actor with ActorLogging {
   import Aggregator._
   import context.dispatcher
+
+  private val ioBridge = IOExtension(context.system).ioBridge()
+  private val httpClient = context.system.actorOf(Props(new HttpClient(ioBridge)))
 
   implicit val timeout = Timeout(30.seconds)
 
@@ -87,10 +95,25 @@ class Aggregator extends Actor with ActorLogging {
     }
   }
 
-  private def fetchFeed(url: String): Future[SyndFeed] = future {
-    val c = new URL(url).openConnection()
-    c.setConnectTimeout(20000)
-    new SyndFeedInput().build(new InputStreamReader(c.getInputStream))
+  val httpConduits: Cache[ActorRef] = LruCache()
+
+  private def fetchFeed(url: String): Future[SyndFeed] = {
+    import HttpConduit._
+    val u = new URL(url)
+    val host = u.getHost
+    val port = if (u.getPort == -1) u.getDefaultPort else u.getPort
+    httpConduits.fromFuture(u.getAuthority) {
+      future {
+        context.system.actorOf(
+          props = Props(new HttpConduit(httpClient, host, port, sslEnabled = u.getProtocol == "https")),
+          name = "http-conduit-" + host.replace('.', '_')
+        )
+      }
+    }.map { conduit =>
+      sendReceive(conduit)
+    }.flatMap { pipeline =>
+      pipeline(Get(u.getFile)).map(_.entity.asString).map(s => new SyndFeedInput().build(new StringReader(s)))
+    }
   }
 
   private def storeFeed(url: String, syndFeed: SyndFeed) {
