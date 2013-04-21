@@ -45,7 +45,8 @@ trait AggregatorApi extends HttpService {
         parameter("feedLink") { feedLink: String =>
           respondWithMediaType(`application/json`) {
             complete {
-              (aggregatorRef ? Aggregator.GetFeedArticles(feedLink)).mapTo[Iterator[Article]].map(_.toSeq)
+              log.info("Finding articles for {}", feedLink)
+              (aggregatorRef ? Aggregator.GetFeedArticles(feedLink)).mapTo[Seq[Article]]
             }
           }
         }
