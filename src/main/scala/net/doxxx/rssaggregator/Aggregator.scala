@@ -27,6 +27,9 @@ class Aggregator extends Actor with ActorLogging {
       future {
         FeedDAO.findAll.foreach(checkForUpdates)
       }
+      context.system.scheduler.schedule(1.hour, 1.hour) {
+        FeedDAO.findAll.foreach(checkForUpdates)
+      }
     }
     case GetAllFeeds => {
       future { FeedDAO.findAll.toSeq } pipeTo sender
