@@ -24,15 +24,15 @@ class Aggregator extends Actor with ActorLogging {
   def receive = {
     case Start => {
       log.info("Loading known feeds")
-      Feed.findAll.foreach { f =>
-        checkForUpdates(f)
+      future {
+        FeedDAO.findAll.foreach(checkForUpdates)
       }
     }
     case GetAllFeeds => {
-      sender ! Feed.findAll
+      sender ! FeedDAO.findAll.toSeq
     }
     case GetFeedArticles(feedLink) => {
-      sender ! Article.findByFeedLink(feedLink)
+      sender ! ArticleDAO.findByFeedLink(feedLink).toSeq
     }
     case AddFeed(url) => {
       log.debug("Fetching feed {}", url)
@@ -57,9 +57,9 @@ class Aggregator extends Actor with ActorLogging {
         log.debug("Fetching feed {}", f.link)
         fetchFeed(f.link).onComplete {
           case Success(sf) => {
-            if (Feed.findByFeedLink(f.link).isEmpty) {
+            if (FeedDAO.findOneById(f.link).isEmpty) {
               log.debug("Saving new feed: {}", f.link)
-              Feed.save(f)
+              FeedDAO.save(f)
               storeArticles(f.link, sf)
             }
             else {
@@ -91,33 +91,33 @@ class Aggregator extends Actor with ActorLogging {
   }
 
   private def storeFeed(url: String, syndFeed: SyndFeed) {
-    Feed.findByFeedLink(url) match {
-      case Some(feed) => {
-        // TODO: Check if it's updated?
-        log.debug("Skipping already stored feed {}", url)
-      }
-      case None => {
+    future {
+      if (FeedDAO.findOneById(url).isEmpty) {
         val feed = Feed(url, syndFeed.getLink, syndFeed.getTitle, Option(syndFeed.getDescription))
-        log.debug("Storing feed {}", feed.link)
-        Feed.save(feed)
+        log.debug("Storing feed {}", feed.title)
+        FeedDAO.save(feed)
       }
     }
   }
 
   private def storeArticles(feedLink: String, syndFeed: SyndFeed) {
     syndFeed.getEntries.map(_.asInstanceOf[SyndEntry]).foreach { e =>
-      val contents = e.getContents.map(_.asInstanceOf[SyndContent].getValue).mkString("\n")
       val id = Article.makeId(feedLink, e)
-      Article.findById(id) match {
-        case Some(article) => {
-          // TODO: Check if it's updated?
-          log.debug("Skipping already stored article {}", id)
+      try {
+        ArticleDAO.findOneById(id) match {
+          case Some(article) => {
+            // TODO: Check if it's updated?
+            log.debug("Skipping already stored article {}", id)
+          }
+          case None => {
+            val article = Article.make(id, feedLink, e)
+            log.debug("Storing article {}", article._id)
+            ArticleDAO.save(article)
+          }
         }
-        case None => {
-          val article = Article(id, feedLink, e.getLink, e.getTitle, e.getAuthor, e.getPublishedDate, e.getUpdatedDate, contents)
-          log.debug("Storing article {}", article.id)
-          Article.save(article)
-        }
+      }
+      catch {
+        case ex:Exception => log.error(ex, "Couldn't store article: {}", e.toString)
       }
     }
   }

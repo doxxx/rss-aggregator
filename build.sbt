@@ -19,5 +19,6 @@ libraryDependencies ++= Seq(
     "rome" % "rome" % "1.0",
     "io.spray" % "spray-can" % "1.1-M7",
     "io.spray" % "spray-routing" % "1.1-M7",
-    "io.spray" %% "spray-json" % "1.2.3"
+    "io.spray" %% "spray-json" % "1.2.3",
+    "com.novus" %% "salat" % "1.9.2-SNAPSHOT"
 )
