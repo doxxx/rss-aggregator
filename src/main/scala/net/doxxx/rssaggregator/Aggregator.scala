@@ -29,10 +29,10 @@ class Aggregator extends Actor with ActorLogging {
       }
     }
     case GetAllFeeds => {
-      sender ! FeedDAO.findAll.toSeq
+      future { FeedDAO.findAll.toSeq } pipeTo sender
     }
     case GetFeedArticles(feedLink) => {
-      sender ! ArticleDAO.findByFeedLink(feedLink).toSeq
+      future { ArticleDAO.findByFeedLink(feedLink).toSeq } pipeTo sender
     }
     case AddFeed(url) => {
       log.debug("Fetching feed {}", url)
@@ -80,7 +80,7 @@ class Aggregator extends Actor with ActorLogging {
         storeFeed(feed.link, sf)
         storeArticles(feed.link, sf)
       }
-      case Failure(t) => log.error("Could not check feed for updates: {}", feed.link)
+      case Failure(t) => log.error(t, "Could not check feed for updates: {}", feed.link)
     }
   }
 
