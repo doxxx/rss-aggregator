@@ -18,13 +18,25 @@ private object Model {
 
 }
 
-case class Feed(@Key("_id") link: String, siteLink: String, title: String, description: Option[String] = None, tags: Set[String] = Set.empty)
+case class Feed(@Key("_id") link: String,
+                siteLink: String,
+                title: String,
+                description: Option[String] = None,
+                tags: Set[String] = Set.empty)
 
 object FeedDAO extends SalatDAO[Feed, String](collection = Model.feedsColl) {
   def findAll = find(MongoDBObject())
 }
 
-case class Article(_id: String, feedLink: String, link: Option[String], subject: String, author: String, publishedDate: Option[Date], updatedDate: Option[Date], body: String)
+case class Article(_id: String,
+                   feedLink: String,
+                   link: Option[String],
+                   subject: String,
+                   author: String,
+                   publishedDate: Option[Date],
+                   updatedDate: Option[Date],
+                   tags: Set[String] = Set.empty,
+                   body: String)
 
 object ArticleDAO extends SalatDAO[Article, String](collection = Model.articlesColl) {
   def findByFeedLink(feedLink: String) = {
@@ -45,6 +57,7 @@ object Article {
   def make(id: String, feedLink: String, entry: SyndEntry): Article = {
     val link = Option(entry.getLink).orElse(Option(entry.getUri))
     val contents = entry.getContents.map(_.asInstanceOf[SyndContent].getValue).mkString("\n")
-    Article(id, feedLink, link, entry.getTitle, entry.getAuthor, Option(entry.getPublishedDate), Option(entry.getUpdatedDate), contents)
+    Article(id, feedLink, link, entry.getTitle, entry.getAuthor, Option(entry.getPublishedDate),
+      Option(entry.getUpdatedDate), Set.empty, contents)
   }
 }
