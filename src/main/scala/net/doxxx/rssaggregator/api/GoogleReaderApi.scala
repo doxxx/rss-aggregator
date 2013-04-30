@@ -35,11 +35,11 @@ trait GoogleReaderApi extends HttpService {
       path(apiPath / "unread-count") {
         parameter("output")(unreadCount _)
       } ~
-      path(apiPath / "user-info")(userInfo)
+      path(apiPath / "user-info")(userInfo) ~
       path("reader/atom/feed" / Rest) { feed: String =>
         parameter("n".as[Int]?, "xt"?, "c"?) { (n, xt, c) => getFeed(feed, n, xt, c) }
       }
-    }
+    } ~
     post {
       path(apiPath / "subscription/edit") {
         parameters("ac" ! "subscribe", "s", "a", "t")(addSubscription _) ~
