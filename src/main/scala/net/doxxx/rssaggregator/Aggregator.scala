@@ -83,6 +83,7 @@ class Aggregator extends Actor with ActorLogging {
         }
       }
     }
+    case Authenticate(email, password) => sender ! AuthenticatedUser(email)
   }
 
   private def checkForUpdates(feed: Feed) {
@@ -170,4 +171,8 @@ object Aggregator {
   case class GetFeedArticles(feedLink: String)
   case class AddFeed(url: String)
   case class ImportOpml(opml: String)
+
+  case class Authenticate(email: String, password: String)
+
+  case class AuthenticatedUser(email: String)
 }

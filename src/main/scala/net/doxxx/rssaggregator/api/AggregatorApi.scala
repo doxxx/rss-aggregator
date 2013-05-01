@@ -23,7 +23,7 @@ trait AggregatorApi extends HttpService {
 
   val log: LoggingAdapter
   val aggregatorRef: ActorRef
-  implicit val timeout = Timeout(30.seconds)
+  private implicit val timeout = Timeout(30.seconds)
 
   private val basePath = "aggregator/api/0"
 
