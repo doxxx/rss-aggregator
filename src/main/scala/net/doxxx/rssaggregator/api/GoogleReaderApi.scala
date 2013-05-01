@@ -73,25 +73,21 @@ trait GoogleReaderApi extends HttpService {
   def subscriptionList(output: String) = {
     output match {
       case "json" => respondWithMediaType(`application/json`) {
-        complete {
-          "TODO"
-        }
+        todo
       }
       case "xml" => respondWithMediaType(`text/xml`) {
-        complete {
-          "TODO"
-        }
+        todo
       }
       case _ => reject(MalformedQueryParamRejection("invalid output: %s".format(output), "output"))
     }
   }
 
   def addSubscription(subscription: String, folder: String, title: String) = {
-    complete("TODO")
+    todo
   }
 
   def deleteSubscription(subscription: String) = {
-    complete("TODO")
+    todo
   }
 
   def moveRenameSubscription(subscription: String, oldFolder: Option[String], newFolder: Option[String], newTitle: Option[String]) = {
@@ -99,42 +95,44 @@ trait GoogleReaderApi extends HttpService {
   }
 
   def createFolder(folder: String, subscription: String) = {
-    complete("TODO")
+    todo
   }
 
   def deleteFolder(folder: String, title: String) = {
-    complete("TODO")
+    todo
   }
 
   def tagList(output: String) = {
-    complete("TODO")
+    todo
   }
 
   def markFeedAsRead(subscription: String, timestamp: Long) = {
-    complete("TODO")
+    todo
   }
 
   def markFolderAsRead(folder: String, timestamp: Long) = {
-    complete("TODO")
+    todo
   }
 
   def markPostRead(entryID: String, feed: Option[String]) = {
-    complete("TODO")
+    todo
   }
 
   def markPostUnread(entryID: String, feed: Option[String]) = {
-    complete("TODO")
+    todo
   }
 
   def unreadCount(output: String) = {
-    complete("TODO")
+    todo
   }
 
   def getFeed(feed: String, numItems: Option[Int], excludeTags: Option[String], continuation: Option[String]) = {
-    complete("TODO")
+    todo
   }
 
   def userInfo = {
-    complete("TODO")
+    todo
   }
+  
+  def todo = complete("TODO\n")
 }
