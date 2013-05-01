@@ -15,6 +15,7 @@ private object Model {
   private[model] val db = mongoClient("rss-aggregator")
   private[model] val feedsColl = db("feeds")
   private[model] val articlesColl = db("articles")
+  private[model] val usersColl = db("users")
 
 }
 
@@ -61,3 +62,9 @@ object Article {
       Option(entry.getUpdatedDate), Set.empty, contents)
   }
 }
+
+case class Subscription(feedLink: String, tags: Set[String], readArticles: Set[String])
+
+case class User(@Key("_id") email: String, password: String, subscriptions: List[Subscription])
+
+object UserDAO extends SalatDAO[User, String](collection = Model.usersColl)
