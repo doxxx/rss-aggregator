@@ -48,20 +48,20 @@ trait GoogleReaderApi extends HttpService {
         post {
           path(apiPath / "subscription/edit") {
             parameters("ac" ! "subscribe", "s", "a", "t")(addSubscription _) ~
-              parameters("ac" ! "unsubscribe", "s")(deleteSubscription _) ~
-              parameters("ac" ! "edit", "s", "r"?, "a"?, "t"?)(moveRenameSubscription _)
+            parameters("ac" ! "unsubscribe", "s")(deleteSubscription _) ~
+            parameters("ac" ! "edit", "s", "r"?, "a"?, "t"?)(moveRenameSubscription _)
           } ~
           path(apiPath / "edit-tag") {
             parameters("ac" ! "edit", "a", "s")(createFolder _) ~
-              parameters("ac" ! "edit-tags", "a" ! "user/-/state/com.google/read", "async" ! "true", "i", "s"?)(markPostRead _) ~
-              parameters("ac" ! "edit-tags", "r" ! "user/-/state/com.google/read", "async" ! "true", "i", "s"?)(markPostUnread _)
+            parameters("ac" ! "edit-tags", "a" ! "user/-/state/com.google/read", "async" ! "true", "i", "s"?)(markPostRead _) ~
+            parameters("ac" ! "edit-tags", "r" ! "user/-/state/com.google/read", "async" ! "true", "i", "s"?)(markPostUnread _)
           } ~
           path(apiPath / "disable-tag") {
             parameters("ac" ! "disable-tags", "s", "t")(deleteFolder _)
           } ~
           path(apiPath / "mark-all-as-read") {
             parameters("s", "ts".as[Long])(markFeedAsRead _) ~
-              parameters("t", "ts".as[Long])(markFolderAsRead _)
+            parameters("t", "ts".as[Long])(markFolderAsRead _)
           }
         }
     }
