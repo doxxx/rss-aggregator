@@ -19,6 +19,7 @@ import scala.util.Success
 import scala.xml.XML
 import spray.can.client.HttpClient
 import spray.caching.{Cache, LruCache}
+import com.mongodb.casbah.commons.MongoDBObject
 
 class Aggregator extends Actor with ActorLogging {
   import Aggregator._
@@ -83,7 +84,11 @@ class Aggregator extends Actor with ActorLogging {
         }
       }
     }
-    case Authenticate(email, password) => sender ! AuthenticatedUser(email)
+    case Authenticate(email, password) => {
+      future {
+        UserDAO.findOne(MongoDBObject("_id" -> email, "password" -> password))
+      } pipeTo sender
+    }
   }
 
   private def checkForUpdates(feed: Feed) {
@@ -173,6 +178,4 @@ object Aggregator {
   case class ImportOpml(opml: String)
 
   case class Authenticate(email: String, password: String)
-
-  case class AuthenticatedUser(email: String)
 }

@@ -67,14 +67,14 @@ trait GoogleReaderApi extends HttpService {
     }
   }
 
-  def authenticator(userPass: Option[UserPass]): Future[Option[AuthenticatedUser]] = {
+  def authenticator(userPass: Option[UserPass]): Future[Option[User]] = {
     userPass match {
-      case Some(up) => (aggregatorRef ? Authenticate(up.user, up.pass)).mapTo[AuthenticatedUser].map(Some(_))
+      case Some(up) => (aggregatorRef ? Authenticate(up.user, up.pass)).mapTo[Option[User]]
       case None => future { None }
     }
   }
 
-  def subscriptionList(output: String)(implicit user: AuthenticatedUser) = {
+  def subscriptionList(output: String)(implicit user: User) = {
     output match {
       case "json" => respondWithMediaType(`application/json`) {
         todo
@@ -86,55 +86,55 @@ trait GoogleReaderApi extends HttpService {
     }
   }
 
-  def addSubscription(subscription: String, folder: String, title: String)(implicit user: AuthenticatedUser) = {
+  def addSubscription(subscription: String, folder: String, title: String)(implicit user: User) = {
     todo
   }
 
-  def deleteSubscription(subscription: String)(implicit user: AuthenticatedUser) = {
+  def deleteSubscription(subscription: String)(implicit user: User) = {
     todo
   }
 
-  def moveRenameSubscription(subscription: String, oldFolder: Option[String], newFolder: Option[String], newTitle: Option[String])(implicit user: AuthenticatedUser) = {
+  def moveRenameSubscription(subscription: String, oldFolder: Option[String], newFolder: Option[String], newTitle: Option[String])(implicit user: User) = {
     complete(List(subscription, oldFolder, newFolder, newTitle).mkString(" "))
   }
 
-  def createFolder(folder: String, subscription: String)(implicit user: AuthenticatedUser) = {
+  def createFolder(folder: String, subscription: String)(implicit user: User) = {
     todo
   }
 
-  def deleteFolder(folder: String, title: String)(implicit user: AuthenticatedUser) = {
+  def deleteFolder(folder: String, title: String)(implicit user: User) = {
     todo
   }
 
-  def tagList(output: String)(implicit user: AuthenticatedUser) = {
+  def tagList(output: String)(implicit user: User) = {
     todo
   }
 
-  def markFeedAsRead(subscription: String, timestamp: Long)(implicit user: AuthenticatedUser) = {
+  def markFeedAsRead(subscription: String, timestamp: Long)(implicit user: User) = {
     todo
   }
 
-  def markFolderAsRead(folder: String, timestamp: Long)(implicit user: AuthenticatedUser) = {
+  def markFolderAsRead(folder: String, timestamp: Long)(implicit user: User) = {
     todo
   }
 
-  def markPostRead(entryID: String, feed: Option[String])(implicit user: AuthenticatedUser) = {
+  def markPostRead(entryID: String, feed: Option[String])(implicit user: User) = {
     todo
   }
 
-  def markPostUnread(entryID: String, feed: Option[String])(implicit user: AuthenticatedUser) = {
+  def markPostUnread(entryID: String, feed: Option[String])(implicit user: User) = {
     todo
   }
 
-  def unreadCount(output: String)(implicit user: AuthenticatedUser) = {
+  def unreadCount(output: String)(implicit user: User) = {
     todo
   }
 
-  def getFeed(feed: String, numItems: Option[Int], excludeTags: Option[String], continuation: Option[String])(implicit user: AuthenticatedUser) = {
+  def getFeed(feed: String, numItems: Option[Int], excludeTags: Option[String], continuation: Option[String])(implicit user: User) = {
     todo
   }
 
-  def userInfo(implicit user: AuthenticatedUser) = {
+  def userInfo(implicit user: User) = {
     todo
   }
   
