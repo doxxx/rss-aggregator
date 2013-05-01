@@ -77,7 +77,7 @@ trait GoogleReaderApi extends HttpService {
   def subscriptionList(output: String)(implicit user: AuthenticatedUser) = {
     output match {
       case "json" => respondWithMediaType(`application/json`) {
-        complete(user.email)
+        todo
       }
       case "xml" => respondWithMediaType(`text/xml`) {
         todo
@@ -86,55 +86,55 @@ trait GoogleReaderApi extends HttpService {
     }
   }
 
-  def addSubscription(subscription: String, folder: String, title: String) = {
+  def addSubscription(subscription: String, folder: String, title: String)(implicit user: AuthenticatedUser) = {
     todo
   }
 
-  def deleteSubscription(subscription: String) = {
+  def deleteSubscription(subscription: String)(implicit user: AuthenticatedUser) = {
     todo
   }
 
-  def moveRenameSubscription(subscription: String, oldFolder: Option[String], newFolder: Option[String], newTitle: Option[String]) = {
+  def moveRenameSubscription(subscription: String, oldFolder: Option[String], newFolder: Option[String], newTitle: Option[String])(implicit user: AuthenticatedUser) = {
     complete(List(subscription, oldFolder, newFolder, newTitle).mkString(" "))
   }
 
-  def createFolder(folder: String, subscription: String) = {
+  def createFolder(folder: String, subscription: String)(implicit user: AuthenticatedUser) = {
     todo
   }
 
-  def deleteFolder(folder: String, title: String) = {
+  def deleteFolder(folder: String, title: String)(implicit user: AuthenticatedUser) = {
     todo
   }
 
-  def tagList(output: String) = {
+  def tagList(output: String)(implicit user: AuthenticatedUser) = {
     todo
   }
 
-  def markFeedAsRead(subscription: String, timestamp: Long) = {
+  def markFeedAsRead(subscription: String, timestamp: Long)(implicit user: AuthenticatedUser) = {
     todo
   }
 
-  def markFolderAsRead(folder: String, timestamp: Long) = {
+  def markFolderAsRead(folder: String, timestamp: Long)(implicit user: AuthenticatedUser) = {
     todo
   }
 
-  def markPostRead(entryID: String, feed: Option[String]) = {
+  def markPostRead(entryID: String, feed: Option[String])(implicit user: AuthenticatedUser) = {
     todo
   }
 
-  def markPostUnread(entryID: String, feed: Option[String]) = {
+  def markPostUnread(entryID: String, feed: Option[String])(implicit user: AuthenticatedUser) = {
     todo
   }
 
-  def unreadCount(output: String) = {
+  def unreadCount(output: String)(implicit user: AuthenticatedUser) = {
     todo
   }
 
-  def getFeed(feed: String, numItems: Option[Int], excludeTags: Option[String], continuation: Option[String]) = {
+  def getFeed(feed: String, numItems: Option[Int], excludeTags: Option[String], continuation: Option[String])(implicit user: AuthenticatedUser) = {
     todo
   }
 
-  def userInfo = {
+  def userInfo(implicit user: AuthenticatedUser) = {
     todo
   }
   
