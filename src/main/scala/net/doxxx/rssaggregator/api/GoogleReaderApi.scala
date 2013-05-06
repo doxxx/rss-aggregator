@@ -86,8 +86,19 @@ trait GoogleReaderApi extends HttpService {
     }
   }
 
-  def addSubscription(subscription: String, folder: String, title: String)(implicit user: User) = {
-    todo
+  def addSubscription(feedLink: String, folder: String, title: String)(implicit user: User) = {
+    complete {
+      future {
+        aggregatorRef ! AddFeed(feedLink)
+        user.subscriptions.find { _.feedLink == feedLink } match {
+          case Some(s) => "Already subscribed.\n"
+          case None => {
+            UserDAO.save(user.copy(subscriptions = Subscription(feedLink, Set(folder), Set.empty) :: user.subscriptions))
+            "Subscription added.\n"
+          }
+        }
+      }
+    }
   }
 
   def deleteSubscription(subscription: String)(implicit user: User) = {
