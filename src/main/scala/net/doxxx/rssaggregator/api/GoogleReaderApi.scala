@@ -49,7 +49,7 @@ trait GoogleReaderApi extends HttpService {
           path(apiPath / "subscription/edit") {
             parameters("ac" ! "subscribe", "s", "a", "t")(addSubscription _) ~
             parameters("ac" ! "unsubscribe", "s")(deleteSubscription _) ~
-            parameters("ac" ! "edit", "s", "r"?, "a"?, "t"?)(moveRenameSubscription _)
+            parameters("ac" ! "edit", "s", "r"?, "a"?, "t"?)(editSubscription _)
           } ~
           path(apiPath / "edit-tag") {
             parameters("ac" ! "edit", "a", "s")(createFolder _) ~
@@ -117,8 +117,34 @@ trait GoogleReaderApi extends HttpService {
     }
   }
 
-  def moveRenameSubscription(subscription: String, oldFolder: Option[String], newFolder: Option[String], newTitle: Option[String])(implicit user: User) = {
-    complete(List(subscription, oldFolder, newFolder, newTitle).mkString(" "))
+  def editSubscription(feedLink: String, removeTag: Option[String], addTag: Option[String], newTitle: Option[String])(implicit user: User) = {
+    complete {
+      future {
+        user.subscriptions.find { _.feedLink == feedLink } match {
+          case Some(sub) => {
+            var newSub = sub
+
+            newSub = (removeTag, addTag) match {
+              case (Some(oldTag), Some(newTag)) => newSub.copy(tags = newSub.tags - oldTag + newTag)
+              case (Some(oldTag), None) => newSub.copy(tags = newSub.tags - oldTag)
+              case (None, Some(newTag)) => newSub.copy(tags = newSub.tags + newTag)
+              case (None, None) => newSub
+            }
+
+            newSub = newTitle match {
+              case Some(s) => newSub.copy(title = s)
+              case None => newSub
+            }
+
+            UserDAO.save(user.copy(subscriptions = newSub :: user.subscriptions.filterNot(_ eq sub)))
+            "Subscription updated.\n"
+          }
+          case None => {
+            "Not subscribed.\n"
+          }
+        }
+      }
+    }
   }
 
   def createFolder(folder: String, subscription: String)(implicit user: User) = {
