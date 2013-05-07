@@ -101,8 +101,20 @@ trait GoogleReaderApi extends HttpService {
     }
   }
 
-  def deleteSubscription(subscription: String)(implicit user: User) = {
-    todo
+  def deleteSubscription(feedLink: String)(implicit user: User) = {
+    complete {
+      future {
+        user.subscriptions.find { _.feedLink == feedLink } match {
+          case Some(s) => {
+            UserDAO.save(user.copy(subscriptions = user.subscriptions.filterNot(_ eq s)))
+            "Subscription removed.\n"
+          }
+          case None => {
+            "Not subscribed.\n"
+          }
+        }
+      }
+    }
   }
 
   def moveRenameSubscription(subscription: String, oldFolder: Option[String], newFolder: Option[String], newTitle: Option[String])(implicit user: User) = {
