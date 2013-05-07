@@ -93,7 +93,7 @@ trait GoogleReaderApi extends HttpService {
         user.subscriptions.find { _.feedLink == feedLink } match {
           case Some(s) => "Already subscribed.\n"
           case None => {
-            UserDAO.save(user.copy(subscriptions = Subscription(feedLink, Set(folder), Set.empty) :: user.subscriptions))
+            UserDAO.save(user.copy(subscriptions = Subscription(feedLink, title, Set(folder), Set.empty) :: user.subscriptions))
             "Subscription added.\n"
           }
         }

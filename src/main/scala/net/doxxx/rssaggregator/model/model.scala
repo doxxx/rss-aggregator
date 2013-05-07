@@ -63,7 +63,7 @@ object Article {
   }
 }
 
-case class Subscription(feedLink: String, tags: Set[String], readArticles: Set[String])
+case class Subscription(feedLink: String, title: String, tags: Set[String], readArticles: Set[String])
 
 case class User(@Key("_id") email: String, password: String, subscriptions: List[Subscription])
 
