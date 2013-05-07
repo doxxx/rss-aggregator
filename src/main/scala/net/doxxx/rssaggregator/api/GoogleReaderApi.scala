@@ -93,7 +93,7 @@ trait GoogleReaderApi extends HttpService {
         user.subscriptions.find { _.feedLink == feedLink } match {
           case Some(s) => "Already subscribed.\n"
           case None => {
-            UserDAO.save(user.copy(subscriptions = Subscription(feedLink, title, Set(folder), Set.empty) :: user.subscriptions))
+            UserDAO.save(user.copy(subscriptions = user.subscriptions + Subscription(feedLink, title, Set(folder), Set.empty)))
             "Subscription added.\n"
           }
         }
@@ -105,8 +105,8 @@ trait GoogleReaderApi extends HttpService {
     complete {
       future {
         user.subscriptions.find { _.feedLink == feedLink } match {
-          case Some(s) => {
-            UserDAO.save(user.copy(subscriptions = user.subscriptions.filterNot(_ eq s)))
+          case Some(sub) => {
+            UserDAO.save(user.copy(subscriptions = user.subscriptions - sub))
             "Subscription removed.\n"
           }
           case None => {
@@ -136,7 +136,7 @@ trait GoogleReaderApi extends HttpService {
               case None => newSub
             }
 
-            UserDAO.save(user.copy(subscriptions = newSub :: user.subscriptions.filterNot(_ eq sub)))
+            UserDAO.save(user.copy(subscriptions = user.subscriptions - sub + newSub))
             "Subscription updated.\n"
           }
           case None => {
