@@ -1,24 +1,23 @@
 package net.doxxx.rssaggregator
 
+import model._
 import akka.actor.{ActorRef, Props, ActorLogging, Actor}
 import akka.pattern._
 import akka.util.Timeout
 import spray.client.HttpConduit
 import spray.io._
-import model._
-import scala.concurrent.duration._
-import scala.concurrent._
-import com.sun.syndication.io.SyndFeedInput
-import java.io.StringReader
-import java.net.URL
-import scala.util.{Try, Failure, Success}
-import scala.xml.XML
 import spray.can.client.HttpClient
 import spray.caching.{Cache, LruCache}
-import com.mongodb.casbah.commons.MongoDBObject
+import com.sun.syndication.io.SyndFeedInput
+import scala.concurrent.duration._
+import scala.concurrent._
+import scala.util.{Failure, Success}
+import scala.xml.XML
+import java.io.StringReader
+import java.net.URL
 
-class Aggregator extends Actor with ActorLogging {
-  import Aggregator._
+class AggregatorService extends Actor with ActorLogging {
+  import AggregatorService._
   import context.dispatcher
 
   private val ioBridge = IOExtension(context.system).ioBridge()
@@ -36,12 +35,15 @@ class Aggregator extends Actor with ActorLogging {
         FeedDAO.findAll.foreach(checkForUpdates)
       }
     }
+
     case GetAllFeeds => {
       future { FeedDAO.findAll.toSeq } pipeTo sender
     }
+
     case GetFeedArticles(feedLink) => {
       future { ArticleDAO.findByFeedLink(feedLink).toSeq } pipeTo sender
     }
+
     case AddFeed(url) => {
       log.debug("Fetching feed {}", url)
 
@@ -57,6 +59,7 @@ class Aggregator extends Actor with ActorLogging {
         case (feed, articles) => AddFeedResult(feed)
       }.pipeTo(sender)
     }
+
     case ImportOpml(opml) => {
       val feeds = importOpml(opml)
       feeds.foreach { f =>
@@ -77,11 +80,6 @@ class Aggregator extends Actor with ActorLogging {
           }
         }
       }
-    }
-    case Authenticate(email, password) => {
-      future {
-        UserDAO.findOne(MongoDBObject("_id" -> email, "password" -> password))
-      } pipeTo sender
     }
   }
 
@@ -139,13 +137,11 @@ class Aggregator extends Actor with ActorLogging {
   }
 }
 
-object Aggregator {
+object AggregatorService {
   case object Start
   case object GetAllFeeds
   case class GetFeedArticles(feedLink: String)
   case class AddFeed(url: String)
   case class AddFeedResult(feed: Feed)
   case class ImportOpml(opml: String)
-
-  case class Authenticate(email: String, password: String)
 }
