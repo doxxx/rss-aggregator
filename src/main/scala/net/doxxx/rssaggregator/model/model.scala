@@ -80,13 +80,13 @@ object DAO {
   }
 }
 
-case class Subscription(feedLink: String, title: String, tags: Set[String], readArticles: Set[String]) {
+case class Subscription(feedLink: String, title: String, tags: Set[String] = Set.empty, readArticles: Set[String] = Set.empty) {
   def setTitle(newTitle: String) = copy(title = newTitle)
   def addTag(tag: String) = copy(tags = tags + tag)
   def removeTag(tag: String) = copy(tags = tags - tag)
 }
 
-case class User(@Key("_id") email: String, password: String, subscriptions: Set[Subscription]) {
+case class User(@Key("_id") email: String, password: String, subscriptions: Set[Subscription] = Set.empty) {
   def addSubscription(sub: Subscription) = copy(subscriptions = subscriptions + sub)
   def removeSubscription(sub: Subscription) = copy(subscriptions = subscriptions - sub)
 }
