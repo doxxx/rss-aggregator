@@ -16,6 +16,7 @@ import akka.event.LoggingAdapter
 import spray.routing.authentication.{UserPass, BasicAuth}
 import scala.concurrent._
 import scala.concurrent.duration._
+import scala.util.{Failure, Success, Try}
 
 /**
  * Created 13-03-26 5:36 PM by gordon.
@@ -26,7 +27,7 @@ trait GoogleReaderApi extends HttpService {
 
   private val apiPath = "reader/api/0"
 
-  private implicit val timeout = akka.util.Timeout(30.seconds)
+  private implicit val timeout = akka.util.Timeout(120.seconds)
 
   val googleReaderApiRoute = {
     authenticate(BasicAuth(authenticator _, "rss-aggregator")) { implicit user =>
@@ -46,6 +47,9 @@ trait GoogleReaderApi extends HttpService {
         }
       } ~
         post {
+          path(apiPath / "subscription/quickadd") {
+            parameters("quickadd")(quickAddSubscription _)
+          } ~
           path(apiPath / "subscription/edit") {
             parameters("ac" ! "subscribe", "s", "a", "t")(addSubscription _) ~
             parameters("ac" ! "unsubscribe", "s")(deleteSubscription _) ~
@@ -86,15 +90,38 @@ trait GoogleReaderApi extends HttpService {
     }
   }
 
+  def quickAddSubscription(feedLink: String)(implicit user: User) = {
+    complete {
+      (aggregatorRef ? AddFeed(feedLink)).mapTo[AddFeedResult].map {
+        case AddFeedResult(feed) => {
+          log.debug("AddFeed success: {}", feedLink)
+          user.subscriptions.find { _.feedLink == feedLink } match {
+            case Some(s) => "Already subscribed.\n"
+            case None => {
+              UserDAO.save(user.addSubscription(Subscription(feedLink, feed.title, Set.empty, Set.empty)))
+              "Subscription added.\n"
+            }
+          }
+        }
+      }
+    }
+  }
+
   def addSubscription(feedLink: String, folder: String, title: String)(implicit user: User) = {
     complete {
-      future {
-        aggregatorRef ! AddFeed(feedLink)
-        user.subscriptions.find { _.feedLink == feedLink } match {
-          case Some(s) => "Already subscribed.\n"
-          case None => {
-            UserDAO.save(user.copy(subscriptions = user.subscriptions + Subscription(feedLink, title, Set(folder), Set.empty)))
-            "Subscription added.\n"
+      (aggregatorRef ? AddFeed(feedLink)).mapTo[AddFeedResult].map {
+        case AddFeedResult(feed) => {
+          user.subscriptions.find { _.feedLink == feedLink } match {
+            case Some(s) => {
+              if (!s.tags.contains(folder)) {
+                UserDAO.save(user.removeSubscription(s).addSubscription(s.addTag(folder)))
+                "Already subscribed. Added to folder.\n"
+              }
+            }
+            case None => {
+              UserDAO.save(user.addSubscription(Subscription(feedLink, title, Set(folder), Set.empty)))
+              "Subscription added.\n"
+            }
           }
         }
       }
@@ -106,7 +133,7 @@ trait GoogleReaderApi extends HttpService {
       future {
         user.subscriptions.find { _.feedLink == feedLink } match {
           case Some(sub) => {
-            UserDAO.save(user.copy(subscriptions = user.subscriptions - sub))
+            UserDAO.save(user.removeSubscription(sub))
             "Subscription removed.\n"
           }
           case None => {
@@ -125,18 +152,18 @@ trait GoogleReaderApi extends HttpService {
             var newSub = sub
 
             newSub = (removeTag, addTag) match {
-              case (Some(oldTag), Some(newTag)) => newSub.copy(tags = newSub.tags - oldTag + newTag)
-              case (Some(oldTag), None) => newSub.copy(tags = newSub.tags - oldTag)
-              case (None, Some(newTag)) => newSub.copy(tags = newSub.tags + newTag)
+              case (Some(oldTag), Some(newTag)) => newSub.removeTag(oldTag).addTag(newTag)
+              case (Some(oldTag), None) => newSub.removeTag(oldTag)
+              case (None, Some(newTag)) => newSub.addTag(newTag)
               case (None, None) => newSub
             }
 
             newSub = newTitle match {
-              case Some(s) => newSub.copy(title = s)
+              case Some(s) => newSub.setTitle(s)
               case None => newSub
             }
 
-            UserDAO.save(user.copy(subscriptions = user.subscriptions - sub + newSub))
+            UserDAO.save(user.removeSubscription(sub).addSubscription(newSub))
             "Subscription updated.\n"
           }
           case None => {

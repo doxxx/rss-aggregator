@@ -4,18 +4,14 @@ import akka.actor.{ActorRef, Props, ActorLogging, Actor}
 import akka.pattern._
 import akka.util.Timeout
 import spray.client.HttpConduit
-import spray.http._
 import spray.io._
 import model._
 import scala.concurrent.duration._
-import scala.collection.JavaConversions._
-import com.sun.syndication.feed.synd._
 import scala.concurrent._
 import com.sun.syndication.io.SyndFeedInput
-import java.io.{StringReader, InputStreamReader}
+import java.io.StringReader
 import java.net.URL
-import scala.util.Failure
-import scala.util.Success
+import scala.util.{Try, Failure, Success}
 import scala.xml.XML
 import spray.can.client.HttpClient
 import spray.caching.{Cache, LruCache}
@@ -28,7 +24,7 @@ class Aggregator extends Actor with ActorLogging {
   private val ioBridge = IOExtension(context.system).ioBridge()
   private val httpClient = context.system.actorOf(Props(new HttpClient(ioBridge)))
 
-  implicit val timeout = Timeout(30.seconds)
+  implicit val timeout = Timeout(120.seconds)
 
   def receive = {
     case Start => {
@@ -50,17 +46,15 @@ class Aggregator extends Actor with ActorLogging {
       log.debug("Fetching feed {}", url)
 
       fetchFeed(url).andThen {
-        case Success(syndFeed) => {
-          log.debug("Fetched feed {} containing {} articles", syndFeed.getTitle, syndFeed.getEntries.size())
-          // store feed and articles in db
-          storeFeed(url, syndFeed)
-          storeArticles(url, syndFeed)
+        case Success((feed, articles)) => {
+          FeedDAO.save(feed)
+          articles.foreach(ArticleDAO.save(_))
         }
         case Failure(t) => {
           log.error(t, "Could not load feed {}", url)
         }
-      }.map { syndFeed =>
-        syndFeed.getTitle
+      }.map {
+        case (feed, articles) => AddFeedResult(feed)
       }.pipeTo(sender)
     }
     case ImportOpml(opml) => {
@@ -68,11 +62,11 @@ class Aggregator extends Actor with ActorLogging {
       feeds.foreach { f =>
         log.debug("Fetching feed {}", f.link)
         fetchFeed(f.link).onComplete {
-          case Success(sf) => {
+          case Success((updatedFeed, articles)) => {
             if (FeedDAO.findOneById(f.link).isEmpty) {
               log.debug("Saving new feed: {}", f.link)
-              FeedDAO.save(f)
-              storeArticles(f.link, sf)
+              FeedDAO.save(updatedFeed)
+              articles.foreach(ArticleDAO.save(_))
             }
             else {
               log.debug("Skipping known feed: {}", f.link)
@@ -93,9 +87,9 @@ class Aggregator extends Actor with ActorLogging {
 
   private def checkForUpdates(feed: Feed) {
     fetchFeed(feed.link).onComplete {
-      case Success(sf) => {
-        storeFeed(feed.link, sf)
-        storeArticles(feed.link, sf)
+      case Success((updatedFeed, articles)) => {
+        FeedDAO.save(updatedFeed)
+        articles.foreach(ArticleDAO.save(_))
       }
       case Failure(t) => log.error(t, "Could not check feed for updates: {}", feed.link)
     }
@@ -103,7 +97,7 @@ class Aggregator extends Actor with ActorLogging {
 
   val httpConduits: Cache[ActorRef] = LruCache()
 
-  private def fetchFeed(url: String): Future[SyndFeed] = {
+  private def fetchFeed(url: String): Future[(Feed, Seq[Article])] = {
     import HttpConduit._
     val u = new URL(url)
     val host = u.getHost
@@ -118,38 +112,13 @@ class Aggregator extends Actor with ActorLogging {
     }.map { conduit =>
       sendReceive(conduit)
     }.flatMap { pipeline =>
-      pipeline(Get(u.getFile)).map(_.entity.asString).map(s => new SyndFeedInput().build(new StringReader(s)))
-    }
-  }
-
-  private def storeFeed(url: String, syndFeed: SyndFeed) {
-    future {
-      if (FeedDAO.findOneById(url).isEmpty) {
-        val feed = Feed(url, syndFeed.getLink, syndFeed.getTitle, Option(syndFeed.getDescription))
-        log.debug("Storing feed {}", feed.title)
-        FeedDAO.save(feed)
-      }
-    }
-  }
-
-  private def storeArticles(feedLink: String, syndFeed: SyndFeed) {
-    syndFeed.getEntries.map(_.asInstanceOf[SyndEntry]).foreach { e =>
-      val id = Article.makeId(feedLink, e)
-      try {
-        ArticleDAO.findOneById(id) match {
-          case Some(article) => {
-            // TODO: Check if it's updated?
-            log.debug("Skipping already stored article {}", id)
-          }
-          case None => {
-            val article = Article.make(id, feedLink, e)
-            log.debug("Storing article {}", article._id)
-            ArticleDAO.save(article)
-          }
-        }
-      }
-      catch {
-        case ex:Exception => log.error(ex, "Couldn't store article: {}", e.toString)
+      val response = pipeline(Get(u.getFile))
+      response.map { r =>
+        val sf = new SyndFeedInput().build(new StringReader(r.entity.asString))
+        log.debug("Parsed feed {}", sf.getTitle)
+        val (feed, articles) = DAO.fromSyndFeed(url, sf)
+        log.debug("Fetched feed {} containing {} articles", feed.title, articles.length)
+        (feed, articles)
       }
     }
   }
@@ -175,6 +144,7 @@ object Aggregator {
   case object GetAllFeeds
   case class GetFeedArticles(feedLink: String)
   case class AddFeed(url: String)
+  case class AddFeedResult(feed: Feed)
   case class ImportOpml(opml: String)
 
   case class Authenticate(email: String, password: String)

@@ -25,6 +25,10 @@ case class Feed(@Key("_id") link: String,
                 description: Option[String] = None,
                 tags: Set[String] = Set.empty)
 
+object Feed {
+  def fromSyndFeed(url: String, sf: SyndFeed): Feed = Feed(url, sf.getLink, sf.getTitle, Option(sf.getDescription))
+}
+
 object FeedDAO extends SalatDAO[Feed, String](collection = Model.feedsColl) {
   def findAll = find(MongoDBObject())
 }
@@ -61,10 +65,30 @@ object Article {
     Article(id, feedLink, link, entry.getTitle, entry.getAuthor, Option(entry.getPublishedDate),
       Option(entry.getUpdatedDate), Set.empty, contents)
   }
+
+  def make(feedLink: String, entry: SyndEntry): Article = {
+    make(makeId(feedLink, entry), feedLink, entry)
+  }
 }
 
-case class Subscription(feedLink: String, title: String, tags: Set[String], readArticles: Set[String])
+object DAO {
+  def fromSyndFeed(url: String, sf: SyndFeed): (Feed, Seq[Article]) = {
+    val feed = Feed.fromSyndFeed(url, sf)
+    val syndEntries = sf.getEntries.map(_.asInstanceOf[SyndEntry]).toSeq
+    val articles = syndEntries.map(e => Article.make(url, e))
+    (feed, articles)
+  }
+}
 
-case class User(@Key("_id") email: String, password: String, subscriptions: Set[Subscription])
+case class Subscription(feedLink: String, title: String, tags: Set[String], readArticles: Set[String]) {
+  def setTitle(newTitle: String) = copy(title = newTitle)
+  def addTag(tag: String) = copy(tags = tags + tag)
+  def removeTag(tag: String) = copy(tags = tags - tag)
+}
+
+case class User(@Key("_id") email: String, password: String, subscriptions: Set[Subscription]) {
+  def addSubscription(sub: Subscription) = copy(subscriptions = subscriptions + sub)
+  def removeSubscription(sub: Subscription) = copy(subscriptions = subscriptions - sub)
+}
 
 object UserDAO extends SalatDAO[User, String](collection = Model.usersColl)
