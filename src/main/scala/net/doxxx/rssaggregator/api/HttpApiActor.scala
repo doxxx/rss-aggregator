@@ -26,6 +26,8 @@ class HttpApiActor(val userService: ActorRef)
   with SprayActorLogging
   with HttpService {
 
+  import context.dispatcher
+
   implicit def actorRefFactory = context
 
   private implicit val executionContext = context.dispatcher
