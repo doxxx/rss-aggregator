@@ -26,9 +26,8 @@ class HttpApiActor(val userService: ActorRef)
   with SprayActorLogging
   with HttpService {
 
-  import context.dispatcher
-
-  implicit def actorRefFactory = context
+  def actorRefFactory = context
+  implicit def executionContext = actorRefFactory.dispatcher
 
   private implicit val executionContext = context.dispatcher
 
@@ -41,42 +40,50 @@ class HttpApiActor(val userService: ActorRef)
   lazy val googleReaderApiRoute = {
     authenticate(BasicAuth(authenticator _, "rss-aggregator")) { implicit user =>
       get {
-        path(apiPath / "subscription" / "list") {
-          parameter("output")(subscriptionList _)
-        } ~
-          path(apiPath / "tag" / "list") {
+        pathPrefix(apiPath) {
+          path("subscription" / "list") {
+            parameter("output")(subscriptionList _)
+          } ~
+          path("tag" / "list") {
             parameter("output")(tagList _)
           } ~
-          path(apiPath / "unread-count") {
+          path("unread-count") {
             parameter("output")(unreadCount _)
           } ~
-          path(apiPath / "user-info")(userInfo) ~
-          path("reader" / "atom" / "feed" / Rest) { feed: String =>
-            parameter("n".as[Int]?, "xt"?, "c"?) { (n, xt, c) => getFeed(feed, n, xt, c) }
+          path("user-info")(userInfo)
+        } ~
+        path("reader" / "atom" / "feed" / Rest) { feed: String =>
+          parameter("n".as[Int]?, "xt"?, "c"?) { (n, xt, c) =>
+            getFeed(feed, n, xt, c)
           }
-      } ~
-        post {
-          path(apiPath / "subscription" / "quickadd") {
-            parameters("quickadd")(quickAddSubscription _)
-          } ~
-            path(apiPath / "subscription" / "edit") {
-              parameters("ac" ! "subscribe", "s", "a", "t")(addSubscription _) ~
-                parameters("ac" ! "unsubscribe", "s")(deleteSubscription _) ~
-                parameters("ac" ! "edit", "s", "r"?, "a"?, "t"?)(editSubscription _)
-            } ~
-            path(apiPath / "edit-tag") {
-              parameters("ac" ! "edit", "a", "s")(createFolder _) ~
-                parameters("ac" ! "edit-tags", "a" ! "user/-/state/com.google/read", "async" ! "true", "i", "s"?)(markPostRead _) ~
-                parameters("ac" ! "edit-tags", "r" ! "user/-/state/com.google/read", "async" ! "true", "i", "s"?)(markPostUnread _)
-            } ~
-            path(apiPath / "disable-tag") {
-              parameters("ac" ! "disable-tags", "s", "t")(deleteFolder _)
-            } ~
-            path(apiPath / "mark-all-as-read") {
-              parameters("s", "ts".as[Long])(markFeedAsRead _) ~
-                parameters("t", "ts".as[Long])(markFolderAsRead _)
-            }
         }
+      } ~
+      post {
+        pathPrefix(apiPath) {
+          pathPrefix("subscription") {
+            path("quickadd") {
+              parameters("quickadd")(quickAddSubscription _)
+            } ~
+            path("edit") {
+              parameters("ac" ! "subscribe", "s", "a", "t")(addSubscription _) ~
+              parameters("ac" ! "unsubscribe", "s")(deleteSubscription _) ~
+              parameters("ac" ! "edit", "s", "r"?, "a"?, "t"?)(editSubscription _)
+            }
+          } ~
+          path("edit-tag") {
+            parameters("ac" ! "edit", "a", "s")(createFolder _) ~
+            parameters("ac" ! "edit-tags", "a" ! "user/-/state/com.google/read", "async" ! "true", "i", "s"?)(markPostRead _) ~
+            parameters("ac" ! "edit-tags", "r" ! "user/-/state/com.google/read", "async" ! "true", "i", "s"?)(markPostUnread _)
+          } ~
+          path("disable-tag") {
+            parameters("ac" ! "disable-tags", "s", "t")(deleteFolder _)
+          } ~
+          path("mark-all-as-read") {
+            parameters("s", "ts".as[Long])(markFeedAsRead _) ~
+            parameters("t", "ts".as[Long])(markFolderAsRead _)
+          }
+        }
+      }
     }
   }
 
