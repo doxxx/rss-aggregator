@@ -1,23 +1,21 @@
 package net.doxxx.rssaggregator.api
 
 import net.doxxx.rssaggregator.model._
+import net.doxxx.rssaggregator.UserService
 import akka.actor.{ActorLogging, ActorRef, Actor}
+import akka.event.LoggingReceive
 import akka.pattern._
-import spray.http._
-import MediaTypes._
+import spray.http.MediaTypes._
+import spray.json.DefaultJsonProtocol._
+import spray.json.{JsNumber, JsValue, RootJsonFormat}
+import spray.httpx.SprayJsonSupport._
 import spray.routing.authentication.BasicAuth
 import spray.routing.authentication.UserPass
 import spray.routing.{UnsupportedRequestContentTypeRejection, HttpService, MalformedQueryParamRejection}
-import spray.util.SprayActorLogging
 import scala.concurrent.duration._
 import scala.concurrent._
-import net.doxxx.rssaggregator.UserService
-import spray.json.DefaultJsonProtocol._
-import spray.httpx.SprayJsonSupport._
-import scala.util.{Try, Failure, Success}
-import spray.json.{JsNumber, JsValue, RootJsonFormat}
+import scala.util.{Failure, Success}
 import java.util.Date
-import akka.event.LoggingReceive
 
 /**
  * Created 13-03-26 5:41 PM by gordon.
