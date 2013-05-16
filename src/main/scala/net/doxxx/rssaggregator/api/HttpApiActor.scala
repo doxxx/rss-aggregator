@@ -1,7 +1,7 @@
 package net.doxxx.rssaggregator.api
 
 import net.doxxx.rssaggregator.model._
-import akka.actor.{ActorRef, Actor}
+import akka.actor.{ActorLogging, ActorRef, Actor}
 import akka.pattern._
 import spray.http._
 import MediaTypes._
@@ -17,21 +17,22 @@ import spray.httpx.SprayJsonSupport._
 import scala.util.{Try, Failure, Success}
 import spray.json.{JsNumber, JsValue, RootJsonFormat}
 import java.util.Date
+import akka.event.LoggingReceive
 
 /**
  * Created 13-03-26 5:41 PM by gordon.
  */
 class HttpApiActor(val userService: ActorRef)
   extends Actor
-  with SprayActorLogging
+  with ActorLogging
   with HttpService {
 
   def actorRefFactory = context
   implicit def executionContext = actorRefFactory.dispatcher
 
   private implicit val executionContext = context.dispatcher
+  def receive = LoggingReceive { runRoute(googleReaderApiRoute) }
 
-  def receive = runRoute(googleReaderApiRoute)
 
   private val apiPath = "reader" / "api" / "0"
 

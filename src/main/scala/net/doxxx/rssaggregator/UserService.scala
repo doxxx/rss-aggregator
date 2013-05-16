@@ -11,6 +11,7 @@ import com.mongodb.casbah.commons.MongoDBObject
 import akka.util.Timeout
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
+import akka.event.LoggingReceive
 
 /**
  * Created 13-05-13 8:18 AM by gordon.
@@ -22,18 +23,16 @@ class UserService(aggregatorService: ActorRef) extends Actor with ActorLogging {
 
   private implicit val timeout = Timeout(10.seconds)
 
-  def receive = {
+  def receive = LoggingReceive {
     case Start => // nothing for the moment
 
     case msg @ Authenticate(email, password) => {
-      log.debug(msg.toString)
       future {
         UserDAO.findOne(MongoDBObject("_id" -> email, "password" -> password))
       }.pipeTo(sender)
     }
 
     case msg @ Subscribe(user, feedLink, tagOpt, titleOpt) => {
-      log.debug(msg.toString)
       (aggregatorService ? AggregatorService.AddFeed(feedLink)).map {
         case r @ AggregatorService.AddFeedResult(feed) => {
           log.debug(r.toString)
@@ -62,7 +61,6 @@ class UserService(aggregatorService: ActorRef) extends Actor with ActorLogging {
     }
 
     case msg @ Unsubscribe(user, feedLink) => {
-      log.debug(msg.toString)
       future {
         user.subscriptions.find { _.feedLink == feedLink } match {
           case Some(sub) => {
@@ -79,7 +77,6 @@ class UserService(aggregatorService: ActorRef) extends Actor with ActorLogging {
     }
 
     case msg @ EditSubscription(user, feedLink, removeTag, addTag, newTitle) => {
-      log.debug(msg.toString)
       future {
         user.subscriptions.find { _.feedLink == feedLink } match {
           case Some(sub) => {
