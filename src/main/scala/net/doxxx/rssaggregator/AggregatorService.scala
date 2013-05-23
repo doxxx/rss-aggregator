@@ -4,24 +4,22 @@ import model._
 import akka.actor.{ActorRef, Props, ActorLogging, Actor}
 import akka.pattern._
 import akka.util.Timeout
-import spray.client.HttpConduit
-import spray.io._
-import spray.can.client.HttpClient
-import spray.caching.{Cache, LruCache}
+import akka.io.IO
+import spray.can.Http
+import spray.client.pipelining._
 import com.sun.syndication.io.SyndFeedInput
 import scala.concurrent.duration._
 import scala.concurrent._
 import scala.util.{Failure, Success}
 import scala.xml.XML
 import java.io.StringReader
-import java.net.URL
+import spray.http.HttpEntity
+import com.sun.syndication.feed.synd.SyndFeed
 
 class AggregatorService extends Actor with ActorLogging {
   import AggregatorService._
-  import context.dispatcher
 
-  private val ioBridge = IOExtension(context.system).ioBridge()
-  private val httpClient = context.system.actorOf(Props(new HttpClient(ioBridge)))
+  implicit def executionContext = context.dispatcher
 
   implicit val timeout = Timeout(120.seconds)
 
@@ -93,31 +91,17 @@ class AggregatorService extends Actor with ActorLogging {
     }
   }
 
-  val httpConduits: Cache[ActorRef] = LruCache()
+  implicit def entity2SyndFeed(entity: HttpEntity): SyndFeed = new SyndFeedInput().build(new StringReader(entity.asString))
+
+  val httpClient = IO(Http)(context.system)
+  val pipeline = sendReceive(httpClient) ~> unmarshal[SyndFeed]
 
   private def fetchFeed(url: String): Future[(Feed, Seq[Article])] = {
-    import HttpConduit._
-    val u = new URL(url)
-    val host = u.getHost
-    val port = if (u.getPort == -1) u.getDefaultPort else u.getPort
-    httpConduits.fromFuture(u.getAuthority) {
-      future {
-        context.system.actorOf(
-          props = Props(new HttpConduit(httpClient, host, port, sslEnabled = u.getProtocol == "https")),
-          name = "http-conduit-" + host.replace('.', '_')
-        )
-      }
-    }.map { conduit =>
-      sendReceive(conduit)
-    }.flatMap { pipeline =>
-      val response = pipeline(Get(u.getFile))
-      response.map { r =>
-        val sf = new SyndFeedInput().build(new StringReader(r.entity.asString))
-        log.debug("Parsed feed {}", sf.getTitle)
-        val (feed, articles) = DAO.fromSyndFeed(url, sf)
-        log.debug("Fetched feed {} containing {} articles", feed.title, articles.length)
-        (feed, articles)
-      }
+    pipeline(Get(url)) map { sf =>
+      log.debug("Parsed feed {}", sf.getTitle)
+      val (feed, articles) = DAO.fromSyndFeed(url, sf)
+      log.debug("Fetched feed {} containing {} articles", feed.title, articles.length)
+      (feed, articles)
     }
   }
 

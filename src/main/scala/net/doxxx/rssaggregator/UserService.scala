@@ -18,7 +18,7 @@ import scala.util.{Failure, Success}
 class UserService(aggregatorService: ActorRef) extends Actor with ActorLogging {
   import UserService._
 
-  import context.dispatcher // ExecutionContext
+  private implicit val executionContext = context.dispatcher
 
   private implicit val timeout = Timeout(10.seconds)
 

@@ -28,34 +28,36 @@ class HttpApiActor(val userService: ActorRef)
 
   implicit def actorRefFactory = context
 
+  private implicit val executionContext = context.dispatcher
+
   def receive = runRoute(googleReaderApiRoute)
 
-  private val apiPath = "reader/api/0"
+  private val apiPath = "reader" / "api" / "0"
 
   private implicit val timeout = akka.util.Timeout(10.seconds)
 
   lazy val googleReaderApiRoute = {
     authenticate(BasicAuth(authenticator _, "rss-aggregator")) { implicit user =>
       get {
-        path(apiPath / "subscription/list") {
+        path(apiPath / "subscription" / "list") {
           parameter("output")(subscriptionList _)
         } ~
-          path(apiPath / "tag/list") {
+          path(apiPath / "tag" / "list") {
             parameter("output")(tagList _)
           } ~
           path(apiPath / "unread-count") {
             parameter("output")(unreadCount _)
           } ~
           path(apiPath / "user-info")(userInfo) ~
-          path("reader/atom/feed" / Rest) { feed: String =>
+          path("reader" / "atom" / "feed" / Rest) { feed: String =>
             parameter("n".as[Int]?, "xt"?, "c"?) { (n, xt, c) => getFeed(feed, n, xt, c) }
           }
       } ~
         post {
-          path(apiPath / "subscription/quickadd") {
+          path(apiPath / "subscription" / "quickadd") {
             parameters("quickadd")(quickAddSubscription _)
           } ~
-            path(apiPath / "subscription/edit") {
+            path(apiPath / "subscription" / "edit") {
               parameters("ac" ! "subscribe", "s", "a", "t")(addSubscription _) ~
                 parameters("ac" ! "unsubscribe", "s")(deleteSubscription _) ~
                 parameters("ac" ! "edit", "s", "r"?, "a"?, "t"?)(editSubscription _)

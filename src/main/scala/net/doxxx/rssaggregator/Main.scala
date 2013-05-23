@@ -3,10 +3,11 @@ package net.doxxx.rssaggregator
 import akka.actor.{Props, ActorSystem}
 import api.HttpApiActor
 import akka.event.Logging
-import spray.can.server.SprayCanHttpServerApp
+import spray.can.Http
+import akka.io.IO
 
-object Main extends App with SprayCanHttpServerApp {
-  implicit override lazy val system = ActorSystem("rss-aggregator")
+object Main extends App {
+  implicit lazy val system = ActorSystem("rss-aggregator")
 
   val log = Logging(system, this.getClass)
 
@@ -16,6 +17,6 @@ object Main extends App with SprayCanHttpServerApp {
   val userService = system.actorOf(Props(new UserService(aggregatorService)), name = "user-service")
   userService ! UserService.Start
 
-  val httpApi = system.actorOf(Props(new HttpApiActor(userService)), "http-api")
-  newHttpServer(httpApi) ! Bind(interface = "localhost", port = 8080)
+  val httpApi = system.actorOf(Props(new HttpApiActor(userService)), name = "http-api")
+  IO(Http) ! Http.Bind(httpApi, interface="localhost", port=8080)
 }
