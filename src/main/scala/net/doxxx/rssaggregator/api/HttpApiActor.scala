@@ -7,7 +7,7 @@ import spray.http._
 import MediaTypes._
 import spray.routing.authentication.BasicAuth
 import spray.routing.authentication.UserPass
-import spray.routing.{HttpService, MalformedQueryParamRejection}
+import spray.routing.{UnsupportedRequestContentTypeRejection, HttpService, MalformedQueryParamRejection}
 import spray.util.SprayActorLogging
 import scala.concurrent.duration._
 import scala.concurrent._
@@ -85,13 +85,21 @@ class HttpApiActor(val userService: ActorRef)
     }
   }
 
+  def tag2category(tag: String) = Map("id" -> tag, "label" -> tag.substring(tag.lastIndexOf('/')+1))
+
+  case class GRSubscription(id: String, title: String, categories: Seq[Map[String,String]], sortid: String, firstitemmsec: String)
+
+  implicit val subscriptionsFormat = jsonFormat5(GRSubscription)
+
   def subscriptionList(output: String)(implicit user: User) = {
     output match {
       case "json" => respondWithMediaType(`application/json`) {
-        todo
+        complete(user.subscriptions.toSeq.map { sub =>
+          GRSubscription(sub.feedLink, sub.title, sub.tags.toSeq.map(tag2category), "12345678", "0")
+        })
       }
       case "xml" => respondWithMediaType(`text/xml`) {
-        todo
+        reject(UnsupportedRequestContentTypeRejection("text/xml"))
       }
       case _ => reject(MalformedQueryParamRejection("invalid output: %s".format(output), "output"))
     }
