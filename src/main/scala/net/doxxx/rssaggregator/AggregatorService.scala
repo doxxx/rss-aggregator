@@ -1,20 +1,14 @@
 package net.doxxx.rssaggregator
 
 import model._
-import akka.actor.{ActorRef, Props, ActorLogging, Actor}
+import akka.actor.{ActorLogging, Actor}
 import akka.pattern._
 import akka.util.Timeout
-import akka.io.IO
-import spray.can.Http
-import spray.client.pipelining._
-import com.sun.syndication.io.SyndFeedInput
 import scala.concurrent.duration._
 import scala.concurrent._
 import scala.util.{Failure, Success}
 import scala.xml.XML
 import java.io.StringReader
-import spray.http.HttpEntity
-import com.sun.syndication.feed.synd.SyndFeed
 
 class AggregatorService extends Actor with ActorLogging {
   import AggregatorService._
@@ -22,6 +16,8 @@ class AggregatorService extends Actor with ActorLogging {
   implicit def executionContext = context.dispatcher
 
   implicit val timeout = Timeout(120.seconds)
+
+  private val feedFetcher = new FeedFetcher(context.system)
 
   def receive = {
     case Start => {
@@ -45,7 +41,7 @@ class AggregatorService extends Actor with ActorLogging {
     case AddFeed(url) => {
       log.debug("Fetching feed {}", url)
 
-      fetchFeed(url).andThen {
+      feedFetcher(url).andThen {
         case Success((feed, articles)) => {
           FeedDAO.save(feed)
           articles.foreach(ArticleDAO.save(_))
@@ -62,7 +58,7 @@ class AggregatorService extends Actor with ActorLogging {
       val feeds = importOpml(opml)
       feeds.foreach { f =>
         log.debug("Fetching feed {}", f.link)
-        fetchFeed(f.link).onComplete {
+        feedFetcher(f.link).onComplete {
           case Success((updatedFeed, articles)) => {
             if (FeedDAO.findOneById(f.link).isEmpty) {
               log.debug("Saving new feed: {}", f.link)
@@ -82,26 +78,12 @@ class AggregatorService extends Actor with ActorLogging {
   }
 
   private def checkForUpdates(feed: Feed) {
-    fetchFeed(feed.link).onComplete {
+    feedFetcher(feed.link).onComplete {
       case Success((updatedFeed, articles)) => {
         FeedDAO.save(updatedFeed)
         articles.foreach(ArticleDAO.save(_))
       }
       case Failure(t) => log.error(t, "Could not check feed for updates: {}", feed.link)
-    }
-  }
-
-  implicit def entity2SyndFeed(entity: HttpEntity): SyndFeed = new SyndFeedInput().build(new StringReader(entity.asString))
-
-  val httpClient = IO(Http)(context.system)
-  val pipeline = sendReceive(httpClient) ~> unmarshal[SyndFeed]
-
-  private def fetchFeed(url: String): Future[(Feed, Seq[Article])] = {
-    pipeline(Get(url)) map { sf =>
-      log.debug("Parsed feed {}", sf.getTitle)
-      val (feed, articles) = DAO.fromSyndFeed(url, sf)
-      log.debug("Fetched feed {} containing {} articles", feed.title, articles.length)
-      (feed, articles)
     }
   }
 
