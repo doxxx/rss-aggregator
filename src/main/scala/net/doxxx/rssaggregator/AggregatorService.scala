@@ -30,14 +30,6 @@ class AggregatorService extends Actor with ActorLogging {
       }
     }
 
-    case GetAllFeeds => {
-      future { FeedDAO.findAll.toSeq } pipeTo sender
-    }
-
-    case GetFeedArticles(feedLink) => {
-      future { ArticleDAO.findByFeedLink(feedLink).toSeq } pipeTo sender
-    }
-
     case AddFeed(url) => {
       log.debug("Fetching feed {}", url)
 
@@ -105,8 +97,6 @@ class AggregatorService extends Actor with ActorLogging {
 
 object AggregatorService {
   case object Start
-  case object GetAllFeeds
-  case class GetFeedArticles(feedLink: String)
   case class AddFeed(url: String)
   case class AddFeedResult(feed: Feed)
   case class ImportOpml(opml: String)
