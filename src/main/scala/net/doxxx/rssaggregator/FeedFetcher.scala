@@ -20,6 +20,9 @@ import scala.concurrent.duration._
  * Created 13-05-23 10:20 PM by gordon.
  */
 class FeedFetcher(actorSystem: ActorSystem) {
+  import StatusCodes._
+  import HttpHeaders._
+
   val log = Logging(actorSystem, this.getClass)
   implicit val executionContext = actorSystem.dispatcher
   implicit val timeout = Timeout(120.seconds)
@@ -28,7 +31,7 @@ class FeedFetcher(actorSystem: ActorSystem) {
 
   def entity2SyndFeed(entity: HttpEntity): SyndFeed = new SyndFeedInput().build(new StringReader(entity.asString))
 
-  private def entityHandler(url: String, entity: HttpEntity) = future {
+  private def parseFeed(url: String, entity: HttpEntity) = future {
     val sf = entity2SyndFeed(entity)
     log.debug("Parsed feed {}", sf.getTitle)
     val (feed, articles) = DAO.fromSyndFeed(url, sf)
@@ -36,36 +39,27 @@ class FeedFetcher(actorSystem: ActorSystem) {
     (feed, articles)
   }
 
-  @tailrec
-  private def extractLocation(headers: List[HttpHeader]): Option[String] = {
-    headers match {
-      case Nil => None
-      case HttpHeaders.Location(uri) :: rest => Some(uri.toString())
-      case HttpHeader(_, _) :: rest => extractLocation(rest)
+  private def moved(location: Option[Location]) = {
+    location match {
+      case Some(Location(uri)) => apply(uri.toString()) // restart fetch with new uri as the canonical url
+      case None => Future.failed(new IllegalStateException("URL redirect with no Location header"))
     }
   }
 
-  private def permRedirectHandler(headers: List[HttpHeader]) = {
-    extractLocation(headers) match {
-      case Some(location) => apply(location)
-      case None => Promise.failed(new IllegalStateException("URL redirect with no Location header")).future
+  private def found(url: String, location: Option[Location]) = {
+    location match {
+      case Some(Location(uri)) => pipeline(Get(uri)) flatMap responseHandler(url)
+      case None => Future.failed(new IllegalStateException("URL redirect with no Location header"))
     }
   }
 
-  private def tempRedirectHandler(url: String, headers: List[HttpHeader]) = {
-    extractLocation(headers) match {
-      case Some(location) => pipeline(Get(location)) flatMap responseHandler(url)
-      case None => Promise.failed(new IllegalStateException("URL redirect with no Location header")).future
+  private def responseHandler(url: String)(response: HttpResponse): Future[(Feed, Seq[Article])] = {
+    response.status match {
+      case MovedPermanently | PermanentRedirect => moved(response.header[Location])
+      case Found            | TemporaryRedirect => found(url, response.header[Location])
+      case sc if (sc.isFailure)                 => Future.failed(new FeedNotFound(url, sc.reason))
+      case _                                    => parseFeed(url, response.entity)
     }
-  }
-
-  private def responseHandler(url: String)(r: HttpResponse): Future[(Feed, Seq[Article])] = r match {
-    case HttpResponse(StatusCodes.OK, entity, _, _)                      => entityHandler(url, entity)
-    case HttpResponse(StatusCodes.MovedPermanently, entity, headers, _)  => permRedirectHandler(headers)
-    case HttpResponse(StatusCodes.PermanentRedirect, entity, headers, _) => permRedirectHandler(headers)
-    case HttpResponse(StatusCodes.Found, entity, headers, _)             => tempRedirectHandler(url, headers)
-    case HttpResponse(StatusCodes.TemporaryRedirect, entity, headers, _) => tempRedirectHandler(url, headers)
-    case HttpResponse(sc, _, _, _) if (sc.isFailure) => Promise.failed(new FeedNotFound(url, sc.reason)).future
   }
 
   def apply(url: String): Future[(Feed, Seq[Article])] = {
