@@ -38,44 +38,54 @@ class HttpApiActor(val userService: ActorRef)
   private implicit val timeout = akka.util.Timeout(10.seconds)
 
   lazy val googleReaderApiRoute = {
-    authenticate(BasicAuth(authenticator _, "rss-aggregator")) { implicit user =>
-      get {
-        path(apiPath / "subscription" / "list") {
-          parameter("output")(subscriptionList _)
-        } ~
-          path(apiPath / "tag" / "list") {
-            parameter("output")(tagList _)
+    pathPrefix(apiPath) {
+      authenticate(BasicAuth(authenticator _, "rss-aggregator")) { implicit user =>
+        pathPrefix("subscription") {
+          path("list") {
+            get(parameter("output")(subscriptionList _))
           } ~
-          path(apiPath / "unread-count") {
-            parameter("output")(unreadCount _)
+          path("quickadd") {
+            post(parameters("quickadd")(quickAddSubscription _))
           } ~
-          path(apiPath / "user-info")(userInfo) ~
-          path("reader" / "atom" / "feed" / Rest) { feed: String =>
-            parameter("n".as[Int]?, "xt"?, "c"?) { (n, xt, c) => getFeed(feed, n, xt, c) }
-          }
-      } ~
-        post {
-          path(apiPath / "subscription" / "quickadd") {
-            parameters("quickadd")(quickAddSubscription _)
-          } ~
-            path(apiPath / "subscription" / "edit") {
+          path("edit") {
+            post {
               parameters("ac" ! "subscribe", "s", "a", "t")(addSubscription _) ~
-                parameters("ac" ! "unsubscribe", "s")(deleteSubscription _) ~
-                parameters("ac" ! "edit", "s", "r"?, "a"?, "t"?)(editSubscription _)
-            } ~
-            path(apiPath / "edit-tag") {
-              parameters("ac" ! "edit", "a", "s")(createFolder _) ~
-                parameters("ac" ! "edit-tags", "a" ! "user/-/state/com.google/read", "async" ! "true", "i", "s"?)(markPostRead _) ~
-                parameters("ac" ! "edit-tags", "r" ! "user/-/state/com.google/read", "async" ! "true", "i", "s"?)(markPostUnread _)
-            } ~
-            path(apiPath / "disable-tag") {
-              parameters("ac" ! "disable-tags", "s", "t")(deleteFolder _)
-            } ~
-            path(apiPath / "mark-all-as-read") {
-              parameters("s", "ts".as[Long])(markFeedAsRead _) ~
-                parameters("t", "ts".as[Long])(markFolderAsRead _)
+              parameters("ac" ! "unsubscribe", "s")(deleteSubscription _) ~
+              parameters("ac" ! "edit", "s", "r"?, "a"?, "t"?)(editSubscription _)
             }
+          }
+        } ~
+        path("tag" / "list") {
+          get(parameter("output")(tagList _))
+        } ~
+        path("unread-count") {
+          get(parameter("output")(unreadCount _))
+        } ~
+        path("user-info"){
+          get(userInfo)
+        } ~
+        path("edit-tag") {
+          post {
+            parameters("ac" ! "edit", "a", "s")(createFolder _) ~
+            parameters("ac" ! "edit-tags", "a" ! "user/-/state/com.google/read", "async" ! "true", "i", "s"?)(markPostRead _) ~
+            parameters("ac" ! "edit-tags", "r" ! "user/-/state/com.google/read", "async" ! "true", "i", "s"?)(markPostUnread _)
+          }
+        } ~
+        path("disable-tag") {
+          post(parameters("ac" ! "disable-tags", "s", "t")(deleteFolder _))
+        } ~
+        path("mark-all-as-read") {
+          post {
+            parameters("s", "ts".as[Long])(markFeedAsRead _) ~
+            parameters("t", "ts".as[Long])(markFolderAsRead _)
+          }
         }
+      }
+    } ~
+    path("reader" / "atom" / "feed" / Rest) { feed: String =>
+      authenticate(BasicAuth(authenticator _, "rss-aggregator")) { implicit user =>
+        get(parameter("n".as[Int]?, "xt"?, "c"?) { (n, xt, c) => getFeed(feed, n, xt, c) })
+      }
     }
   }
 
