@@ -5,6 +5,8 @@ import api.HttpApiActor
 import akka.event.Logging
 import spray.can.Http
 import akka.io.IO
+import java.net.{InetSocketAddress, NetworkInterface, InetAddress}
+import scala.collection.JavaConversions._
 
 object Main extends App {
   implicit lazy val system = ActorSystem("rss-aggregator")
@@ -18,5 +20,9 @@ object Main extends App {
   userService ! UserService.Start
 
   val httpApi = system.actorOf(Props(new HttpApiActor(userService)), name = "http-api")
-  IO(Http) ! Http.Bind(httpApi, interface="localhost", port=8080)
+  val allInterfaceAddresses = NetworkInterface.getNetworkInterfaces.toList.flatMap(_.getInterfaceAddresses).map(_.getAddress.getHostAddress)
+  allInterfaceAddresses.foreach { addr =>
+    IO(Http) ! Http.Bind(httpApi, addr, 8080)
+  }
+
 }
