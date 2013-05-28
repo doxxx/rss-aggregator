@@ -8,7 +8,7 @@ import spray.http._
 import MediaTypes._
 import spray.routing.authentication.BasicAuth
 import spray.routing.authentication.UserPass
-import spray.routing.{UnsupportedRequestContentTypeRejection, HttpService, MalformedQueryParamRejection}
+import spray.routing._
 import spray.util.SprayActorLogging
 import scala.concurrent.duration._
 import scala.concurrent._
@@ -23,19 +23,14 @@ import java.util.Date
  * Created 13-03-26 5:41 PM by gordon.
  */
 class HttpApiActor(val userService: ActorRef)
-  extends Actor
-  with SprayActorLogging
-  with HttpService {
-
-  implicit def actorRefFactory = context
-
-  private implicit val executionContext = context.dispatcher
+  extends HttpServiceActor
+  with SprayActorLogging {
 
   def receive = runRoute(googleReaderApiRoute)
 
+  private implicit val executionContext = context.dispatcher
+  private implicit val timeout = akka.util.Timeout(60.seconds)
   private val apiPath = "reader" / "api" / "0"
-
-  private implicit val timeout = akka.util.Timeout(10.seconds)
 
   lazy val googleReaderApiRoute = {
     pathPrefix(apiPath) {

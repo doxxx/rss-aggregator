@@ -20,7 +20,6 @@ class UserService(aggregatorService: ActorRef) extends Actor with ActorLogging {
   import UserService._
 
   private implicit val executionContext = context.dispatcher
-
   private implicit val timeout = Timeout(10.seconds)
 
   def receive = LoggingReceive {
