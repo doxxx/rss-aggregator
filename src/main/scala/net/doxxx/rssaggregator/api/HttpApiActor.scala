@@ -1,5 +1,6 @@
 package net.doxxx.rssaggregator.api
 
+import scala.language.postfixOps
 import net.doxxx.rssaggregator.model._
 import akka.actor.{ActorRef, Actor}
 import akka.pattern._
