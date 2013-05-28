@@ -9,6 +9,7 @@ import scala.concurrent._
 import scala.util.{Failure, Success}
 import scala.xml.XML
 import java.io.StringReader
+import akka.event.LoggingReceive
 
 class AggregatorService extends Actor with ActorLogging {
   import AggregatorService._
@@ -19,7 +20,7 @@ class AggregatorService extends Actor with ActorLogging {
 
   private val feedFetcher = new FeedFetcher(context.system)
 
-  def receive = {
+  def receive = LoggingReceive {
     case Start => {
       log.info("Loading known feeds")
       future {
