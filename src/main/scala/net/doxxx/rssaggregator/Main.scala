@@ -14,7 +14,6 @@ object Main extends App {
   val log = Logging(system, this.getClass)
 
   val aggregatorService = system.actorOf(Props[AggregatorService], name = "aggregator-service")
-  aggregatorService ! AggregatorService.Start
 
   val userService = system.actorOf(Props(new UserService(aggregatorService)), name = "user-service")
   userService ! UserService.Start

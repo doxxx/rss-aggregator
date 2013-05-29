@@ -20,17 +20,17 @@ class AggregatorService extends Actor with ActorLogging {
 
   private val feedFetcher = new FeedFetcher(context.system)
 
-  def receive = LoggingReceive {
-    case Start => {
-      log.info("Loading known feeds")
-      future {
-        FeedDAO.findAll.foreach(checkForUpdates)
-      }
-      context.system.scheduler.schedule(1.hour, 1.hour) {
-        FeedDAO.findAll.foreach(checkForUpdates)
-      }
+  override def preStart() {
+    log.info("Loading known feeds")
+    future {
+      FeedDAO.findAll.foreach(checkForUpdates)
     }
+    context.system.scheduler.schedule(1.hour, 1.hour) {
+      FeedDAO.findAll.foreach(checkForUpdates)
+    }
+  }
 
+  def receive = LoggingReceive {
     case AddFeed(url) => {
       log.debug("Fetching feed {}", url)
 
@@ -97,7 +97,6 @@ class AggregatorService extends Actor with ActorLogging {
 }
 
 object AggregatorService {
-  case object Start
   case class AddFeed(url: String)
   case class AddFeedResult(feed: Feed)
   case class ImportOpml(opml: String)
