@@ -6,8 +6,7 @@ import akka.actor._
 import akka.pattern._
 import spray.http._
 import MediaTypes._
-import spray.routing.authentication.BasicAuth
-import spray.routing.authentication.UserPass
+import spray.routing.authentication.{HttpAuthenticator, BasicAuth, UserPass}
 import spray.routing._
 import spray.util.SprayActorLogging
 import spray.json.DefaultJsonProtocol._
@@ -32,9 +31,11 @@ class HttpApiActor(val userService: ActorRef) extends HttpServiceActor with Spra
 
   private def tag2category(tag: String) = Map("id" -> tag, "label" -> tag.substring(tag.lastIndexOf('/')+1))
 
+  val auth: HttpAuthenticator[User] = BasicAuth(authenticator _, "rss-aggregator")
+
   private lazy val googleReaderApiRoute = {
     pathPrefix(apiPath) {
-      authenticate(BasicAuth(authenticator _, "rss-aggregator")) { user =>
+      authenticate(auth) { user =>
         pathPrefix("subscription") {
           path("list") {
             get {
@@ -135,7 +136,7 @@ class HttpApiActor(val userService: ActorRef) extends HttpServiceActor with Spra
       }
     } ~
     path("reader" / "atom" / "feed" / Rest) { feed: String =>
-      authenticate(BasicAuth(authenticator _, "rss-aggregator")) { user =>
+      authenticate(auth) { user =>
         get {
           parameter("n".as[Int] ?, "xt"?, "c"?) { (numItems: Option[Int], excludeTags: Option[String],
                                                      continuation: Option[String]) =>
