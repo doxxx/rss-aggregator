@@ -16,7 +16,6 @@ object Main extends App {
   val aggregatorService = system.actorOf(Props[AggregatorService], name = "aggregator-service")
 
   val userService = system.actorOf(Props(new UserService(aggregatorService)), name = "user-service")
-  userService ! UserService.Start
 
   val httpApiService = system.actorOf(Props(new HttpApiService(userService)), name = "http-api")
   val allInterfaceAddresses = NetworkInterface.getNetworkInterfaces.toList.flatMap(_.getInterfaceAddresses).map(_.getAddress.getHostAddress)

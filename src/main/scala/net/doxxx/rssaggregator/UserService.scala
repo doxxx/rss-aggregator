@@ -23,8 +23,6 @@ class UserService(aggregatorService: ActorRef) extends Actor with ActorLogging {
   private implicit val timeout = Timeout(10.seconds)
 
   def receive = LoggingReceive {
-    case Start => // nothing for the moment
-
     case Authenticate(email, password) => {
       future {
         UserDAO.findOne(MongoDBObject("_id" -> email, "password" -> password))
@@ -108,7 +106,6 @@ class UserService(aggregatorService: ActorRef) extends Actor with ActorLogging {
 }
 
 object UserService {
-  case object Start
   case class Authenticate(email: String, password: String)
   case class Subscribe(user: User, feedLink: String, tag: Option[String], title: Option[String])
   case class Unsubscribe(user: User, feedLink: String)
