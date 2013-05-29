@@ -19,7 +19,7 @@ import scala.util.{Failure, Success}
 /**
  * Created 13-03-26 5:41 PM by gordon.
  */
-class HttpApiActor(val userService: ActorRef) extends HttpServiceActor with SprayActorLogging {
+class HttpApiService(val userService: ActorRef) extends HttpServiceActor with SprayActorLogging {
 
   def receive = runRoute(googleReaderApiRoute)
 

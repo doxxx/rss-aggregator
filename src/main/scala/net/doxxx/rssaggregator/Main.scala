@@ -1,7 +1,7 @@
 package net.doxxx.rssaggregator
 
 import akka.actor.{Props, ActorSystem}
-import api.HttpApiActor
+import api.HttpApiService
 import akka.event.Logging
 import spray.can.Http
 import akka.io.IO
@@ -19,10 +19,10 @@ object Main extends App {
   val userService = system.actorOf(Props(new UserService(aggregatorService)), name = "user-service")
   userService ! UserService.Start
 
-  val httpApi = system.actorOf(Props(new HttpApiActor(userService)), name = "http-api")
+  val httpApiService = system.actorOf(Props(new HttpApiService(userService)), name = "http-api")
   val allInterfaceAddresses = NetworkInterface.getNetworkInterfaces.toList.flatMap(_.getInterfaceAddresses).map(_.getAddress.getHostAddress)
   allInterfaceAddresses.foreach { addr =>
-    IO(Http) ! Http.Bind(httpApi, addr, 8080)
+    IO(Http) ! Http.Bind(httpApiService, addr, 8080)
   }
 
 }
