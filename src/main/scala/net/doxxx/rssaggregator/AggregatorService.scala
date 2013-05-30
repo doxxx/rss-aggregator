@@ -10,6 +10,7 @@ import scala.util.{Failure, Success}
 import scala.xml.XML
 import java.io.StringReader
 import akka.event.LoggingReceive
+import java.util.{Date, Calendar}
 
 class AggregatorService extends Actor with ActorLogging {
   import AggregatorService._
@@ -23,14 +24,11 @@ class AggregatorService extends Actor with ActorLogging {
   override def preStart() {
     log.info("Loading known feeds")
     future {
-      FeedDAO.findAll.foreach(checkForUpdates)
-    }
-    context.system.scheduler.schedule(1.hour, 1.hour) {
-      FeedDAO.findAll.foreach(checkForUpdates)
+      FeedDAO.findAll.foreach(scheduleFeedUpdate(_))
     }
   }
 
-  def receive = LoggingReceive {
+  override def receive = LoggingReceive {
     case AddFeed(url) => {
       log.debug("Fetching feed {}", url)
 
@@ -70,13 +68,28 @@ class AggregatorService extends Actor with ActorLogging {
     }
   }
 
-  private def checkForUpdates(feed: Feed) {
-    feedFetcher(feed.link).onComplete {
-      case Success((updatedFeed, articles)) => {
+  def scheduleFeedUpdate(feed: Feed) {
+    val next = feed.lastFetchTime.map(_.getTime).getOrElse(0L) + 15.minutes.toMillis
+    val delay = (next - System.currentTimeMillis()).max(0)
+    log.debug("Scheduling next check in {} milliseconds for feed: {}", delay, feed.link)
+    context.system.scheduler.scheduleOnce(delay.millis) {
+      checkForUpdates(feed).foreach(scheduleFeedUpdate(_))
+    }
+  }
+
+  private def checkForUpdates(feed: Feed): Future[Feed] = {
+    log.info("Checking for updates to feed: {}", feed.link)
+    feedFetcher(feed.link).map {
+      case (updatedFeed, articles) => {
         FeedDAO.save(updatedFeed)
         articles.foreach(ArticleDAO.save(_))
+        updatedFeed
       }
-      case Failure(t) => log.error(t, "Could not check feed for updates: {}", feed.link)
+    }.recover {
+      case t: Throwable => {
+        log.error(t, "Error while checking feed for updates: {}", feed.link)
+        feed.copy(lastFetchTime = Some(new Date()))
+      }
     }
   }
 
