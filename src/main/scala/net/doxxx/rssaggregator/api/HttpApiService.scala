@@ -137,6 +137,15 @@ class HttpApiService extends HttpServiceActor with SprayActorLogging {
               todo
             }
           }
+        } ~
+        path("import-opml") {
+          post {
+            entity(as[String]) { e =>
+              complete {
+                (userService ? UserService.ImportOpml(user, e)).map(result)
+              }
+            }
+          }
         }
       }
     } ~
