@@ -36,7 +36,7 @@ class FeedFetcher(actorSystem: ActorSystem) {
     log.debug("Parsed feed {}", sf.getTitle)
     val (feed, articles) = DAO.fromSyndFeed(url, sf)
     log.debug("Fetched feed {} containing {} articles", feed.title, articles.length)
-    (feed, articles)
+    (feed.copy(lastFetchTime = Some(new java.util.Date())), articles)
   }
 
   private def moved(location: Option[Location]) = {

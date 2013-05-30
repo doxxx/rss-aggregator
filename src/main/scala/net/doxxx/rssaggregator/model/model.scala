@@ -23,7 +23,8 @@ case class Feed(@Key("_id") link: String,
                 siteLink: String,
                 title: String,
                 description: Option[String] = None,
-                tags: Set[String] = Set.empty)
+                tags: Set[String] = Set.empty,
+                lastFetchTime: Option[Date] = None)
 
 object Feed {
   def fromSyndFeed(url: String, sf: SyndFeed): Feed = Feed(url, sf.getLink, sf.getTitle, Option(sf.getDescription))
