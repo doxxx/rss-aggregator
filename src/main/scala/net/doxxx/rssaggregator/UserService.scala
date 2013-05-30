@@ -114,16 +114,17 @@ class UserService extends Actor with ActorLogging {
     case ImportOpml(user, opml) => {
       val feedInfos = parseOpml(opml)
       log.debug("Parsed OPML: " + feedInfos)
-      feedInfos.foreach { feedInfo =>
+      val addFeeds = feedInfos.map { feedInfo =>
         (aggregatorService ? AggregatorService.AddFeed(feedInfo.link)).mapTo[AggregatorService.AddFeedResult].map {
           case AggregatorService.AddFeedResult(feed) => {
             UserDAO.save(user.addSubscription(Subscription(feed.link, feedInfo.title, Set(feedInfo.folder))))
-            Success(true)
+            feedInfo.link -> Success(true)
           }
         }.recover {
-          case t: Throwable => Failure(t)
-        }.pipeTo(sender)
+          case t: Throwable => feedInfo.link -> Failure(t)
+        }
       }
+      Future.sequence(addFeeds).map(_.toMap).pipeTo(sender)
     }
   }
 

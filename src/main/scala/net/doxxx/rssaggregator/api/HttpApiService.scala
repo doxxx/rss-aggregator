@@ -14,7 +14,7 @@ import spray.httpx.SprayJsonSupport._
 import scala.concurrent.duration._
 import scala.concurrent._
 import net.doxxx.rssaggregator.UserService
-import scala.util.{Failure, Success}
+import scala.util.{Try, Failure, Success}
 
 /**
  * Created 13-03-26 5:41 PM by gordon.
@@ -142,7 +142,7 @@ class HttpApiService extends HttpServiceActor with SprayActorLogging {
           post {
             entity(as[String]) { e =>
               complete {
-                (userService ? UserService.ImportOpml(user, e)).map(result)
+                (userService ? UserService.ImportOpml(user, e)).mapTo[Map[String,Try[_]]].map(_.mapValues(result(_)))
               }
             }
           }
