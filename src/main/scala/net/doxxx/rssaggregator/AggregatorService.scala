@@ -44,28 +44,6 @@ class AggregatorService extends Actor with ActorLogging {
         case (feed, articles) => AddFeedResult(feed)
       }.pipeTo(sender)
     }
-
-    case ImportOpml(opml) => {
-      val feeds = importOpml(opml)
-      feeds.foreach { f =>
-        log.debug("Fetching feed {}", f.link)
-        feedFetcher(f.link).onComplete {
-          case Success((updatedFeed, articles)) => {
-            if (FeedDAO.findOneById(f.link).isEmpty) {
-              log.debug("Saving new feed: {}", f.link)
-              FeedDAO.save(updatedFeed)
-              articles.foreach(ArticleDAO.save(_))
-            }
-            else {
-              log.debug("Skipping known feed: {}", f.link)
-            }
-          }
-          case Failure(t) => {
-            log.error(t, "Could not import feed {}", f.link)
-          }
-        }
-      }
-    }
   }
 
   def scheduleFeedUpdate(feed: Feed) {
@@ -92,25 +70,9 @@ class AggregatorService extends Actor with ActorLogging {
       }
     }
   }
-
-  private def importOpml(opml: String): Seq[Feed] = {
-    val root = XML.load(new StringReader(opml))
-    val folders = root \ "body" \ "outline"
-    folders.flatMap { elem =>
-      val folderName = (elem \ "@title").text
-      val feeds = elem \ "outline"
-      feeds map { elem =>
-        val feedLink = (elem \ "@xmlUrl").text
-        val siteLink = (elem \ "@htmlUrl").text
-        val title = (elem \ "@title").text
-        Feed(feedLink, siteLink, title, None, Set(folderName))
-      }
-    }
-  }
 }
 
 object AggregatorService {
   case class AddFeed(url: String)
   case class AddFeedResult(feed: Feed)
-  case class ImportOpml(opml: String)
 }

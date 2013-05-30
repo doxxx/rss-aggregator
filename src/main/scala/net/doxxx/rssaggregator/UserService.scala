@@ -12,6 +12,8 @@ import akka.util.Timeout
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 import akka.event.LoggingReceive
+import scala.xml.XML
+import java.io.StringReader
 
 /**
  * Created 13-05-13 8:18 AM by gordon.
@@ -108,7 +110,36 @@ class UserService extends Actor with ActorLogging {
         case t: Throwable => Failure(t)
       }.pipeTo(sender)
     }
+
+    case ImportOpml(user, opml) => {
+      val feedInfos = parseOpml(opml)
+      log.debug("Parsed OPML: " + feedInfos)
+      feedInfos.foreach { feedInfo =>
+        (aggregatorService ? AggregatorService.AddFeed(feedInfo.link)).mapTo[AggregatorService.AddFeedResult].foreach {
+          case AggregatorService.AddFeedResult(feed) => {
+            UserDAO.save(user.addSubscription(Subscription(feed.link, feedInfo.title, Set(feedInfo.folder))))
+          }
+        }
+      }
+    }
   }
+
+  private def parseOpml(opml: String): Seq[ImportedFeed] = {
+    val root = XML.load(new StringReader(opml))
+    val folders = root \ "body" \ "outline"
+    folders.flatMap { elem =>
+      val folder = (elem \ "@title").text
+      val feeds = elem \ "outline"
+      feeds map { elem =>
+        val link = (elem \ "@xmlUrl").text
+        val siteLink = (elem \ "@htmlUrl").text
+        val title = (elem \ "@title").text
+        ImportedFeed(link, siteLink, title, folder)
+      }
+    }
+  }
+
+  private case class ImportedFeed(link: String, siteLink: String, title: String, folder: String)
 }
 
 object UserService {
@@ -116,4 +147,5 @@ object UserService {
   case class Subscribe(user: User, feedLink: String, tag: Option[String], title: Option[String])
   case class Unsubscribe(user: User, feedLink: String)
   case class EditSubscription(user: User, feedLink: String, removeTag: Option[String], addTag: Option[String], newTitle: Option[String])
+  case class ImportOpml(user: User, opml: String)
 }
