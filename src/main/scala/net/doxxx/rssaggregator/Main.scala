@@ -14,8 +14,8 @@ object Main extends App {
   val log = Logging(system, this.getClass)
 
   val aggregatorService = system.actorOf(Props[AggregatorService], name = "aggregator-service")
-  val userService = system.actorOf(Props(new UserService(aggregatorService)), name = "user-service")
-  val httpApiService = system.actorOf(Props(new HttpApiService(userService)), name = "http-api-service")
+  val userService = system.actorOf(Props[UserService], name = "user-service")
+  val httpApiService = system.actorOf(Props[HttpApiService], name = "http-api-service")
 
   val allInterfaceAddresses = NetworkInterface.getNetworkInterfaces.toList.flatMap(_.getInterfaceAddresses).map(_.getAddress.getHostAddress)
   allInterfaceAddresses.foreach { addr =>

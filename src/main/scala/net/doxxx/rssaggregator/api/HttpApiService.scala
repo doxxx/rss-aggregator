@@ -19,13 +19,18 @@ import scala.util.{Failure, Success}
 /**
  * Created 13-03-26 5:41 PM by gordon.
  */
-class HttpApiService(val userService: ActorRef) extends HttpServiceActor with SprayActorLogging {
+class HttpApiService extends HttpServiceActor with SprayActorLogging {
 
   def receive = runRoute(googleReaderApiRoute)
 
   private implicit val executionContext = context.dispatcher
   private implicit val timeout = akka.util.Timeout(60.seconds)
   private val apiPath = "reader" / "api" / "0"
+  private var userService: ActorRef = _
+
+  override def preStart() {
+    userService = context.actorFor(context.system.settings.config.getString("user-service-path"))
+  }
 
   import JsonFormats._
 

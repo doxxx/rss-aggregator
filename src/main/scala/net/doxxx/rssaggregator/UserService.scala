@@ -16,11 +16,17 @@ import akka.event.LoggingReceive
 /**
  * Created 13-05-13 8:18 AM by gordon.
  */
-class UserService(aggregatorService: ActorRef) extends Actor with ActorLogging {
+class UserService extends Actor with ActorLogging {
   import UserService._
 
   private implicit val executionContext = context.dispatcher
   private implicit val timeout = Timeout(10.seconds)
+
+  private var aggregatorService: ActorRef = _
+
+  override def preStart() {
+    aggregatorService = context.actorFor(context.system.settings.config.getString("aggregator-service-path"))
+  }
 
   def receive = LoggingReceive {
     case Authenticate(email, password) => {
