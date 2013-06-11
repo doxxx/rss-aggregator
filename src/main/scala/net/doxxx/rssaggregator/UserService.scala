@@ -126,6 +126,17 @@ class UserService extends Actor with ActorLogging {
       }
       Future.sequence(addFeeds).map(_.toMap).pipeTo(sender)
     }
+
+    case FetchArticles(user, feedLink, num, excludeTag, continuation) => future {
+      user.subscriptions.find { _.feedLink == feedLink } match {
+        case Some(sub) => {
+          ArticleDAO.findByFeedLink(feedLink).sort(MongoDBObject("publishedDate" -> -1)).limit(num.getOrElse(20)).toSeq
+        }
+        case None => {
+          Seq.empty[Article]
+        }
+      }
+    }.pipeTo(sender)
   }
 
   private def parseOpml(opml: String): Seq[ImportedFeed] = {
@@ -152,4 +163,5 @@ object UserService {
   case class Unsubscribe(user: User, feedLink: String)
   case class EditSubscription(user: User, feedLink: String, removeTag: Option[String], addTag: Option[String], newTitle: Option[String])
   case class ImportOpml(user: User, opml: String)
+  case class FetchArticles(user: User, feedLink: String, num: Option[Int], excludeTag: Option[String], continuation: Option[String])
 }
