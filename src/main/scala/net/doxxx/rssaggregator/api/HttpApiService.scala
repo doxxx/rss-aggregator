@@ -152,9 +152,17 @@ class HttpApiService extends HttpServiceActor with SprayActorLogging {
     path("reader" / "atom" / "feed" / Rest) { feed: String =>
       authenticate(auth) { user =>
         get {
-          parameter("n".as[Int] ?, "xt"?, "c"?) { (numItems: Option[Int], excludeTags: Option[String],
-                                                     continuation: Option[String]) =>
-              todo
+          parameter("n".as[Int] ?, "xt"?, "c"?) { (num: Option[Int], excludeTag: Option[String],
+                                                   continuation: Option[String]) =>
+            complete {
+              val articlesFuture = (userService ? UserService.FetchArticles(user, feed, num, excludeTag, continuation)).mapTo[Seq[Article]]
+              // TODO: Map articles to correct response format
+              articlesFuture.map {
+                articles => articles.map {
+                  article => article.subject
+                }
+              }
+            }
           }
         }
       }
