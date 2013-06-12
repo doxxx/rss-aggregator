@@ -26,11 +26,9 @@ class HttpApiActor(val userService: ActorRef)
   with HttpService {
 
   def actorRefFactory = context
-  implicit def executionContext = actorRefFactory.dispatcher
 
   private implicit val executionContext = context.dispatcher
   def receive = LoggingReceive { runRoute(googleReaderApiRoute) }
-
 
   private val apiPath = "reader" / "api" / "0"
 
