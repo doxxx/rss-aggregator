@@ -1,16 +1,14 @@
 package net.doxxx.rssaggregator
 
-import model._
+import net.doxxx.rssaggregator.model._
 import akka.actor.{ActorLogging, Actor}
+import akka.event.LoggingReceive
 import akka.pattern._
 import akka.util.Timeout
 import scala.concurrent.duration._
 import scala.concurrent._
 import scala.util.{Failure, Success}
-import scala.xml.XML
-import java.io.StringReader
-import akka.event.LoggingReceive
-import java.util.{Date, Calendar}
+import java.util.Date
 
 class AggregatorService extends Actor with ActorLogging {
   import AggregatorService._

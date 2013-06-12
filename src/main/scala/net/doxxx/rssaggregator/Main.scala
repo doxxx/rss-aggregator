@@ -1,12 +1,12 @@
 package net.doxxx.rssaggregator
 
-import akka.actor.{Props, ActorSystem}
 import api.HttpApiService
+import akka.actor.{Props, ActorSystem}
+import akka.io.IO
 import akka.event.Logging
 import spray.can.Http
-import akka.io.IO
-import java.net.{InetSocketAddress, NetworkInterface, InetAddress}
 import scala.collection.JavaConversions._
+import java.net.NetworkInterface
 
 object Main extends App {
   implicit val system = ActorSystem("rss-aggregator")
