@@ -24,11 +24,7 @@ class UserService extends Actor with ActorLogging {
   private implicit val executionContext = context.dispatcher
   private implicit val timeout = Timeout(10.seconds)
 
-  private var aggregatorService: ActorRef = _
-
-  override def preStart() {
-    aggregatorService = context.actorFor(context.system.settings.config.getString("aggregator-service-path"))
-  }
+  private val aggregatorService = context.actorSelection(context.system.settings.config.getString("aggregator-service-path"))
 
   def receive = LoggingReceive {
     case Authenticate(email, password) => {

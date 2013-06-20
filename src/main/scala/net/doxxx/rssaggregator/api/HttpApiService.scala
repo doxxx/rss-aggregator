@@ -26,11 +26,7 @@ class HttpApiService extends HttpServiceActor with SprayActorLogging {
   private implicit val executionContext = context.dispatcher
   private implicit val timeout = akka.util.Timeout(60.seconds)
   private val apiPath = "reader" / "api" / "0"
-  private var userService: ActorRef = _
-
-  override def preStart() {
-    userService = context.actorFor(context.system.settings.config.getString("user-service-path"))
-  }
+  private val userService = context.actorSelection(context.system.settings.config.getString("user-service-path"))
 
   import JsonFormats._
 
